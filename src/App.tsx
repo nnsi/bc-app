@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { getGamepads } from "tauri-plugin-gamepad-api";
-import useController from "./useController";
+import useController from "./hooks/useController";
 import { IIDXController } from "./components/IIDXController";
+import { BeatStatus } from "./components/BeatStatus";
 
 function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
@@ -27,7 +28,6 @@ function App() {
 
   const handleGamepadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedGamepadIndex(parseInt(e.target.value, 10));
-    console.log(e.target.value);
   };
 
   return (
@@ -41,9 +41,13 @@ function App() {
         ))}
       </select>
       {controllerStatus && <IIDXController status={controllerStatus} />}
+      {controllerStatus && (
+        <>
+          <BeatStatus status={controllerStatus} />
+        </>
+      )}
     </div>
   );
 }
 
-// 5,1,2,4,7,8,9
 export default App;

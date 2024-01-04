@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { ControllerStatus } from "../useController";
+import { ControllerStatus } from "../hooks/useController";
 
 const Scratch: React.FC<{ className?: string; state: number }> = ({
   className,
@@ -18,29 +18,51 @@ const Scratch: React.FC<{ className?: string; state: number }> = ({
 const StyledScratch = styled(Scratch)`
   width: 100px;
   height: 100px;
-  background: black;
+  background: #666;
   border-radius: 50px;
   font-size: 0;
+  margin: 0 50px;
+  transition: 0.1s;
   &.up {
-    background: blue;
+    background: #6666ff;
+    box-shadow: 0px 0px 15px 5px rgba(128, 128, 255, 0.25);
   }
   &.down {
-    background: red;
+    background: #ff6666;
+    box-shadow: 0px 0px 5px 5px rgba(255, 128, 128, 0.25);
   }
 `;
 
-const Button: React.FC<{ className?: string; isPressed: boolean }> = ({
-  className,
-  isPressed,
-}) => {
-  return <p className={`${className} ${isPressed && "pressed"}`}></p>;
+const Button: React.FC<{
+  className?: string;
+  isPressed: boolean;
+  index: number;
+}> = ({ className, isPressed, index }) => {
+  return (
+    <p
+      className={`${className} ${isPressed && "pressed"} ${
+        index % 2 === 0 ? "even" : "odd"
+      }`}
+    ></p>
+  );
 };
 
 const StyledButton = styled(Button)`
-  border: 1px solid black;
+  border: 1px solid #ccc;
   width: 40px;
   height: 70px;
   color: red;
+  transition: 0.1s;
+  &.even {
+    background: #999;
+  }
+  &.odd {
+    background: #333;
+  }
+  &.pressed {
+    background: #ccffff;
+    box-shadow: 0px 0px 5px 5px rgba(255, 255, 255, 0.25);
+  }
 `;
 
 const IIDXControllerComponent: React.FC<{
@@ -52,7 +74,7 @@ const IIDXControllerComponent: React.FC<{
       <StyledScratch state={status.scratch.state} />
       <div className="keys">
         {status.keys.map((key, i) => (
-          <StyledButton isPressed={key.isPressed} key={i} />
+          <StyledButton isPressed={key.isPressed} index={i} key={i} />
         ))}
       </div>
     </div>
@@ -65,18 +87,12 @@ export const IIDXController = styled(IIDXControllerComponent)`
   .keys {
     display: flex;
     gap: 20px;
-    padding-left: 50px;
     p:nth-child(odd) {
-      background: white;
       margin-top: 100px;
       margin-left: -30px;
     }
     p:nth-child(even) {
-      background: black;
       margin-left: -30px;
-    }
-    p.pressed {
-      background: blue;
     }
   }
 `;
