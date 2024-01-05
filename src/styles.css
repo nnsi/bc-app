@@ -1,6 +1,7 @@
 :root {
   background: #333;
   color: #fff;
+  overflow: hidden;
 }
 * {
   box-sizing: border-box;

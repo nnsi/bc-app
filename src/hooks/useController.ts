@@ -18,9 +18,15 @@ type ScratchStatus = {
   count: number;
 };
 
+type Record = {
+  releaseTimes: number[];
+  pressedTimes: number[];
+};
+
 export type ControllerStatus = {
   keys: KeyStatus[];
   scratch: ScratchStatus;
+  record: Record;
 };
 
 const KEY_MAPPING = {
@@ -58,12 +64,18 @@ const useController = (index: number) => {
     const pad = getGamepads()[index];
     if (!pad) return;
 
+    const newReleaseTimes: number[] = [];
+    const newPressedTimes: number[] = [];
+    const unixTime = new Date().getTime();
+
     const keyStatus = pad.buttons.reduce((arr, button, i) => {
       // マッピングに存在しないボタンはスルー
       if (!(i in KEY_MAPPING)) return arr;
 
       const prevState =
-        controllerStatus?.keys[KEY_MAPPING[i as 5 | 1 | 2 | 4 | 7 | 8 | 9]];
+        controllerStatus?.keys[
+          KEY_MAPPING[i as unknown as keyof typeof KEY_MAPPING]
+        ];
       const isChangedState = button.pressed !== prevState?.isPressed;
 
       const strokeCount =
@@ -76,14 +88,23 @@ const useController = (index: number) => {
         isChangedState,
         beforeState: prevState?.isPressed ?? false,
         beforeStateTime: isChangedState
-          ? new Date().getTime() ?? 0
+          ? unixTime ?? 0
           : prevState?.beforeStateTime ?? 0,
         releaseTime:
-          isChangedState && button.pressed === false
-            ? new Date().getTime() - (prevState?.beforeStateTime ?? 0)
+          prevState && isChangedState && button.pressed === false
+            ? unixTime - (prevState?.beforeStateTime ?? 0)
             : prevState?.releaseTime ?? 0,
         strokeCount,
       };
+
+      // リリース時にnewReleaseTimesに突っ込む
+      if (prevState && isChangedState && button.pressed === false) {
+        newReleaseTimes.push(status.releaseTime);
+      }
+      // 打鍵時にnewPressedTimesに突っ込む
+      if (isChangedState && status.isPressed) {
+        newPressedTimes.push(unixTime);
+      }
 
       // 1鍵だけbutton5なので先頭に配置
       // 1~7鍵:5,1,2,4,7,8,9
@@ -125,11 +146,29 @@ const useController = (index: number) => {
       count: scratchCount,
     };
 
-    const status: ControllerStatus = {
+    // ボタンを叩いた時間（UNIXTIME）と、離した時間（ミリ秒）を保存する
+    const filteredReleaseTimes = newReleaseTimes.filter((time) => time < 200);
+    const record: Record = {
+      releaseTimes: controllerStatus
+        ? [...filteredReleaseTimes, ...controllerStatus.record.releaseTimes]
+        : filteredReleaseTimes,
+      pressedTimes: controllerStatus
+        ? [...newPressedTimes, ...controllerStatus.record.pressedTimes]
+        : newPressedTimes,
+    };
+
+    record.releaseTimes.length =
+      record.releaseTimes.length > 2000 ? 2000 : record.releaseTimes.length;
+
+    record.pressedTimes.length =
+      record.pressedTimes.length > 500 ? 500 : record.pressedTimes.length;
+
+    // 代入
+    setControllerStatus({
       keys: keyStatus,
       scratch: scratchStatus,
-    };
-    setControllerStatus(status);
+      record: record,
+    });
   }
 
   // setInterval内のコールバック関数でStateの値を参照できるようにする
@@ -148,6 +187,10 @@ const useController = (index: number) => {
     };
   }, [index]);
 
-  return controllerStatus;
+  const resetCount = () => {
+    setControllerStatus(undefined);
+  };
+
+  return { controllerStatus, resetCount };
 };
 export default useController;

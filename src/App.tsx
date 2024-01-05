@@ -7,7 +7,7 @@ import { BeatStatus } from "./components/BeatStatus";
 function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
   const [selectedGamepadIndex, setSelectedGamepadIndex] = useState(-1);
-  const controllerStatus = useController(selectedGamepadIndex);
+  const { controllerStatus, resetCount } = useController(selectedGamepadIndex);
 
   useEffect(() => {
     const updateGamepads = () => {
@@ -42,9 +42,12 @@ function App() {
       </select>
       {controllerStatus && <IIDXController status={controllerStatus} />}
       {controllerStatus && (
-        <>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
           <BeatStatus status={controllerStatus} />
-        </>
+          <p>
+            <button onClick={() => resetCount()}>reset</button>
+          </p>
+        </div>
       )}
     </div>
   );
