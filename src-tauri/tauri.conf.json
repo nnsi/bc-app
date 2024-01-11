@@ -15,6 +15,17 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "window": {
+        "maximize": false,
+        "minimize": true,
+        "hide": true,
+        "startDragging": true,
+        "show": true,
+        "unmaximize": true,
+        "unminimize": true,
+        "create": true,
+        "close": true
       }
     },
     "bundle": {
@@ -35,10 +46,12 @@
     "windows": [
       {
         "fullscreen": false,
-        "resizable": true,
+        "resizable": false,
         "title": "counter",
-        "width": 500,
-        "height": 400
+        "width": 410,
+        "height": 250,
+        "transparent": true,
+        "decorations": false
       }
     ]
   }

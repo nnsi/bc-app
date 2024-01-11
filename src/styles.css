@@ -1,8 +1,14 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+}
 :root {
   background: #333;
   color: #fff;
   overflow: hidden;
 }
-* {
-  box-sizing: border-box;
+.container {
+  padding: 5px;
 }

@@ -25,7 +25,7 @@ const StyledScratch = styled(Scratch)`
   transition: 0.1s;
   &.up {
     background: #6666ff;
-    box-shadow: 0px 0px 15px 5px rgba(128, 128, 255, 0.25);
+    box-shadow: 0px 0px 5px 5px rgba(128, 128, 255, 0.25);
   }
   &.down {
     background: #ff6666;
@@ -48,7 +48,6 @@ const Button: React.FC<{
 };
 
 const StyledButton = styled(Button)`
-  border: 1px solid #ccc;
   width: 40px;
   height: 70px;
   color: red;
@@ -57,7 +56,7 @@ const StyledButton = styled(Button)`
     background: #999;
   }
   &.odd {
-    background: #333;
+    background: #666;
   }
   &.pressed {
     background: #ccffff;
