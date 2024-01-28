@@ -42,6 +42,9 @@ const KEY_MAPPING = {
 // スクラッチの状態を保存するミリ秒数
 const FIXED_SCRATCH_STATE_TIME = 200;
 
+// ループのミリ秒数
+const LOOP_MILLI_SECONDS = 5;
+
 function getScratchType({
   current,
   prev,
@@ -120,7 +123,7 @@ const useController = (index: number) => {
     const fixedStateScratchTime =
       pad.axes[1] != prevScratchState?.currentAxes
         ? FIXED_SCRATCH_STATE_TIME
-        : Math.max(prevScratchState?.fixedStateTime - 10, 0);
+        : Math.max(prevScratchState?.fixedStateTime - LOOP_MILLI_SECONDS, 0);
     const scratchState = getScratchType({
       current: pad.axes[1],
       prev: controllerStatus?.scratch.currentAxes ?? pad.axes[1],
@@ -147,6 +150,7 @@ const useController = (index: number) => {
     };
 
     // ボタンを叩いた時間（UNIXTIME）と、離した時間（ミリ秒）を保存する
+    // 200ミリ秒以上はCNとみなして保存しない
     const filteredReleaseTimes = newReleaseTimes.filter((time) => time < 200);
     const record: Record = {
       releaseTimes: controllerStatus
@@ -163,7 +167,6 @@ const useController = (index: number) => {
     record.pressedTimes.length =
       record.pressedTimes.length > 500 ? 500 : record.pressedTimes.length;
 
-    // 代入
     setControllerStatus({
       keys: keyStatus,
       scratch: scratchStatus,
@@ -180,7 +183,10 @@ const useController = (index: number) => {
   }, [captureControllerStatus]);
 
   useEffect(() => {
-    const timerId = setInterval(() => savedCallback.current(), 10);
+    const timerId = setInterval(
+      () => savedCallback.current(),
+      LOOP_MILLI_SECONDS
+    );
 
     return () => {
       clearInterval(timerId);

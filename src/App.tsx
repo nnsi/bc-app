@@ -4,6 +4,8 @@ import useController from "./hooks/useController";
 import { IIDXController } from "./components/IIDXController";
 import { BeatStatus } from "./components/BeatStatus";
 import { appWindow } from "@tauri-apps/api/window";
+import CloseIcon from "@mui/icons-material/Close";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
@@ -12,6 +14,7 @@ function App() {
 
   const updateGamepads = () => {
     setGamepads([...getGamepads()].filter(Boolean));
+    console.log("test");
   };
 
   useEffect(() => {
@@ -35,49 +38,58 @@ function App() {
     appWindow.close();
   };
 
+  const handleReloadClick = () => {
+    resetCount();
+    setSelectedGamepadIndex(-1);
+    updateGamepads();
+  };
+
   return (
     <>
       <header
         data-tauri-drag-region
         style={{
           borderBottom: "1px solid white",
-          padding: "2px 0 2px 5px",
+          padding: "5px 5px 0 5px",
           fontSize: "10px",
+          lineHeight: 1,
           cursor: "default",
+          display: "flex",
+          alignItems: "center",
         }}
       >
-        打鍵カウンタ
-        <span onClick={close}>x</span>
+        <span style={{ marginLeft: "0" }}>打鍵カウンタ</span>
+        <span
+          onClick={handleReloadClick}
+          style={{
+            marginLeft: "auto",
+          }}
+        >
+          <RefreshIcon />
+        </span>
+        <span onClick={close}>
+          <CloseIcon />
+        </span>
       </header>
       <div className="container">
-        <select
-          onChange={handleGamepadChange}
-          value={selectedGamepadIndex}
-          style={{ width: "100%", maxWidth: "100%", marginBottom: "5px" }}
-        >
-          <option value="-1">コントローラーを選択してください</option>
-          {gamepads.map((gamepad: Gamepad) => (
-            <option key={gamepad.index} value={gamepad.index}>
-              {gamepad.id}
-            </option>
-          ))}
-        </select>
+        {!controllerStatus && (
+          <select
+            onChange={handleGamepadChange}
+            value={selectedGamepadIndex}
+            style={{ width: "100%", maxWidth: "100%", marginBottom: "5px" }}
+          >
+            <option value="-1">コントローラーを選択してください</option>
+            {gamepads.map((gamepad: Gamepad) => (
+              <option key={gamepad.index} value={gamepad.index}>
+                {gamepad.id}
+              </option>
+            ))}
+          </select>
+        )}
         {controllerStatus && <IIDXController status={controllerStatus} />}
         {controllerStatus && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <BeatStatus status={controllerStatus} />
-            <p style={{ marginTop: 0 }}>
-              <button
-                onClick={() => resetCount()}
-                style={{
-                  background: "transparent",
-                  border: "1px solid #999",
-                  color: "white",
-                }}
-              >
-                reset
-              </button>
-            </p>
           </div>
         )}
       </div>
