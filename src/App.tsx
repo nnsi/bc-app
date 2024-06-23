@@ -11,10 +11,39 @@ function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
   const [selectedGamepadIndex, setSelectedGamepadIndex] = useState(-1);
   const { controllerStatus, resetCount } = useController(selectedGamepadIndex);
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [isRecievedMode, setIsRecievedMode] = useState(false);
+  const [recievedStatus, setRecievedStatus] = useState<any>(null);
+  const [ipAddress, setIpAddress] = useState<string>("127.0.0.1");
+
+  const status = isRecievedMode ? recievedStatus : controllerStatus;
+
+  if (ws && controllerStatus) {
+    ws.send(JSON.stringify(controllerStatus));
+  }
 
   const updateGamepads = () => {
     setGamepads([...getGamepads()].filter(Boolean));
-    console.log("test");
+  };
+
+  const connectWebSocket = () => {
+    const webSocket = new WebSocket(`ws://${ipAddress}:2356/ws`);
+
+    webSocket.onopen = () => {
+      if (ws) ws.close();
+      console.log("connected");
+      setWs(webSocket);
+    };
+
+    webSocket.onmessage = async (e) => {
+      const text = e.data instanceof Blob ? await e.data.text() : e.data;
+      setRecievedStatus(JSON.parse(text));
+    };
+
+    webSocket.onclose = () => {
+      console.log("closed");
+      setWs(null);
+    };
   };
 
   useEffect(() => {
@@ -27,21 +56,26 @@ function App() {
     return () => {
       window.removeEventListener("gamepadconnected", updateGamepads);
       window.removeEventListener("gamepaddisconnected", updateGamepads);
+      if (ws) ws.close();
     };
   }, []);
 
   const handleGamepadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedGamepadIndex(parseInt(e.target.value, 10));
+    if (!ws) connectWebSocket();
   };
 
   const close = () => {
     appWindow.close();
+    if (ws) ws.close();
   };
 
   const handleReloadClick = () => {
     resetCount();
     setSelectedGamepadIndex(-1);
     updateGamepads();
+    if (ws) ws.close();
+    setIsRecievedMode(false);
   };
 
   return (
@@ -72,24 +106,44 @@ function App() {
         </span>
       </header>
       <div className="container">
-        {!controllerStatus && (
-          <select
-            onChange={handleGamepadChange}
-            value={selectedGamepadIndex}
-            style={{ width: "100%", maxWidth: "100%", marginBottom: "5px" }}
-          >
-            <option value="-1">コントローラーを選択してください</option>
-            {gamepads.map((gamepad: Gamepad) => (
-              <option key={gamepad.index} value={gamepad.index}>
-                {gamepad.id}
-              </option>
-            ))}
-          </select>
+        {!controllerStatus && !isRecievedMode && (
+          <>
+            <select
+              onChange={handleGamepadChange}
+              value={selectedGamepadIndex}
+              style={{ width: "100%", maxWidth: "100%", marginBottom: "5px" }}
+            >
+              <option value="-1">コントローラーを選択してください</option>
+              {gamepads.map((gamepad: Gamepad) => (
+                <option key={gamepad.index} value={gamepad.index}>
+                  {gamepad.id}
+                </option>
+              ))}
+            </select>
+            <p>
+              <input
+                type="text"
+                placeholder="接続先"
+                value={ipAddress}
+                onChange={(e) => {
+                  setIpAddress(e.target.value);
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (!ws) connectWebSocket();
+                  setIsRecievedMode(true);
+                }}
+              >
+                受信モード
+              </button>
+            </p>
+          </>
         )}
-        {controllerStatus && <IIDXController status={controllerStatus} />}
-        {controllerStatus && (
+        {status && <IIDXController status={status} />}
+        {status && (
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <BeatStatus status={controllerStatus} />
+            <BeatStatus status={status} />
           </div>
         )}
       </div>
