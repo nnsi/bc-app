@@ -20,11 +20,20 @@ fn is_port_in_use(port: u16) -> bool {
         }
         Err(_) => true,
     }
-}fn main() {
+}
+
+#[tauri::command]
+fn check_websocket_status(state: tauri::State<bool>) -> bool {
+    *state.inner()
+}
+
+fn main() {
     let port = 2356;
+    let mut is_websocket_running = false;
     if is_port_in_use(port) {
         println!("Port {} is already in use. WebSocket server will not be started.", port);
     } else {
+        is_websocket_running = true;
         // Start the Tokio runtime in a new thread
         std::thread::spawn(|| {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
@@ -50,7 +59,7 @@ fn is_port_in_use(port: u16) -> bool {
 
     // Tauri application setup
     tauri::Builder::default()
-        .setup(|app| {
+        .setup(move |app| {
             // "main" ウィンドウの取得
             let main_window = app.get_window("main").unwrap();
 
@@ -59,9 +68,13 @@ fn is_port_in_use(port: u16) -> bool {
             #[cfg(any(windows, target_os = "macos"))]
             set_shadow(main_window, true).unwrap();
 
+            let app_handle = app.handle();
+            app_handle.manage(is_websocket_running);
+
             Ok(())
         })
         .plugin(tauri_plugin_gamepad::init())
+        .invoke_handler(tauri::generate_handler![check_websocket_status])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

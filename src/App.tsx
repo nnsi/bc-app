@@ -6,6 +6,7 @@ import { BeatStatus } from "./components/BeatStatus";
 import { appWindow } from "@tauri-apps/api/window";
 import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
+import { invoke } from "@tauri-apps/api/tauri";
 
 function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
@@ -15,6 +16,7 @@ function App() {
   const [isRecievedMode, setIsRecievedMode] = useState(false);
   const [recievedStatus, setRecievedStatus] = useState<any>(null);
   const [ipAddress, setIpAddress] = useState<string>("127.0.0.1");
+  const [isServerMode, setIsServerMode] = useState(false);
 
   const status = isRecievedMode ? recievedStatus : controllerStatus;
 
@@ -40,6 +42,11 @@ function App() {
       setRecievedStatus(JSON.parse(text));
     };
 
+    webSocket.onerror = () => {
+      console.log("error");
+      setWs(null);
+    };
+
     webSocket.onclose = () => {
       console.log("closed");
       setWs(null);
@@ -53,6 +60,13 @@ function App() {
     // 初回ロード時にゲームパッドの状態を更新
     updateGamepads();
 
+    (async () => {
+      try {
+        setIsServerMode(await invoke("check_websocket_status"));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
     return () => {
       window.removeEventListener("gamepadconnected", updateGamepads);
       window.removeEventListener("gamepaddisconnected", updateGamepads);
@@ -92,7 +106,9 @@ function App() {
           alignItems: "center",
         }}
       >
-        <span style={{ marginLeft: "0" }}>打鍵カウンタ</span>
+        <span style={{ marginLeft: "0" }}>
+          打鍵カウンタ[{isServerMode ? "Server" : "Client"} Mode]
+        </span>
         <span
           onClick={handleReloadClick}
           style={{
