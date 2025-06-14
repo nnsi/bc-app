@@ -2,47 +2,26 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist"
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
   },
-  "package": {
-    "productName": "bc-app",
-    "version": "0.0.0"
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "shell": {
-        "all": false,
-        "open": true
-      },
-      "window": {
-        "maximize": false,
-        "minimize": true,
-        "hide": true,
-        "startDragging": true,
-        "show": true,
-        "unmaximize": true,
-        "unminimize": true,
-        "create": true,
-        "close": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "targets": "all",
-      "identifier": "nsi.dev",
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ]
-    },
-    "security": {
-      "csp": null
-    },
+  "productName": "bc-app",
+  "mainBinaryName": "bc-app",
+  "version": "0.0.0",
+  "identifier": "nsi.dev",
+  "plugins": {},
+  "app": {
     "windows": [
       {
         "fullscreen": false,
@@ -51,8 +30,12 @@
         "width": 410,
         "height": 250,
         "transparent": true,
-        "decorations": false
+        "decorations": false,
+        "shadow": true
       }
-    ]
+    ],
+    "security": {
+      "csp": null
+    }
   }
 }

@@ -8,7 +8,6 @@ use tokio::sync::{broadcast, Mutex};
 use warp::ws::{Message, WebSocket};
 use warp::Filter;
 use tauri::Manager;
-use window_shadows::set_shadow;
 
 // Check if a port is already in use
 fn is_port_in_use(port: u16) -> bool {
@@ -61,12 +60,10 @@ fn main() {
     tauri::Builder::default()
         .setup(move |app| {
             // "main" ウィンドウの取得
-            let main_window = app.get_window("main").unwrap();
+            let _main_window = app.get_webview_window("main").unwrap();
 
-            // ウィンドウに window-shadows の装飾を適用
-            // Windows, macOS で有効
-            #[cfg(any(windows, target_os = "macos"))]
-            set_shadow(main_window, true).unwrap();
+            // ウィンドウに window-shadows の装飾を適用（削除済み）
+            // Tauri v2では他の方法でシャドウを設定
 
             let app_handle = app.handle();
             app_handle.manage(is_websocket_running);

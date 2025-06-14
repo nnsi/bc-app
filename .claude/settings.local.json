@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run tauri:*)",
+      "Bash(source:*)",
+      "Bash(cargo check:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cargo:*)",
+      "Bash(sudo apt:*)",
+      "Bash(sudo apt install:*)",
+      "Bash(export:*)",
+      "Bash(dpkg:*)",
+      "Bash(npm run build:*)",
+      "Bash(mkdir:*)"
+    ],
+    "deny": []
+  }
+}

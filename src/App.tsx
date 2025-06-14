@@ -1,16 +1,25 @@
 import { useEffect, useState } from "react";
-import { getGamepads } from "tauri-plugin-gamepad-api";
+import type { getGamepads as GetGamepadsType } from "tauri-plugin-gamepad-api";
 import useController from "./hooks/useController";
 import { IIDXController } from "./components/IIDXController";
 import { BeatStatus } from "./components/BeatStatus";
-import { appWindow } from "@tauri-apps/api/window";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
+
+// Tauriが利用可能かチェック
+const isTauriAvailable = () => {
+  return typeof window !== 'undefined' && 
+         typeof window.__TAURI_INTERNALS__ !== 'undefined';
+};
+
+const appWindow = isTauriAvailable() ? getCurrentWebviewWindow() : null;
 
 function App() {
   const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
   const [selectedGamepadIndex, setSelectedGamepadIndex] = useState(-1);
+  const [getGamepads, setGetGamepads] = useState<GetGamepadsType | null>(null);
   const { controllerStatus, resetCount } = useController(selectedGamepadIndex);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isRecievedMode, setIsRecievedMode] = useState(false);
@@ -25,7 +34,16 @@ function App() {
   }
 
   const updateGamepads = () => {
-    setGamepads([...getGamepads()].filter(Boolean));
+    if (isTauriAvailable() && getGamepads) {
+      try {
+        setGamepads([...getGamepads()].filter(Boolean));
+      } catch (error) {
+        console.warn("Gamepad not available:", error);
+        setGamepads([]);
+      }
+    } else {
+      setGamepads([]);
+    }
   };
 
   const connectWebSocket = () => {
@@ -54,6 +72,20 @@ function App() {
   };
 
   useEffect(() => {
+    // gamepadプラグインを動的にロード
+    const loadGamepadPlugin = async () => {
+      if (isTauriAvailable()) {
+        try {
+          const gamepadModule = await import("tauri-plugin-gamepad-api");
+          setGetGamepads(() => gamepadModule.getGamepads);
+        } catch (error) {
+          console.warn("Failed to load gamepad plugin:", error);
+        }
+      }
+    };
+
+    loadGamepadPlugin();
+
     window.addEventListener("gamepadconnected", updateGamepads);
     window.addEventListener("gamepaddisconnected", updateGamepads);
 
@@ -61,10 +93,12 @@ function App() {
     updateGamepads();
 
     (async () => {
-      try {
-        setIsServerMode(await invoke("check_websocket_status"));
-      } catch (e) {
-        console.error(e);
+      if (isTauriAvailable()) {
+        try {
+          setIsServerMode(await invoke("check_websocket_status"));
+        } catch (e) {
+          console.error(e);
+        }
       }
     })();
     return () => {
@@ -80,7 +114,9 @@ function App() {
   };
 
   const close = () => {
-    appWindow.close();
+    if (appWindow) {
+      appWindow.close();
+    }
     if (ws) ws.close();
   };
 

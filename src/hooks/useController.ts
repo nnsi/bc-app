@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { getGamepads } from "tauri-plugin-gamepad-api";
+import type { getGamepads as GetGamepadsType } from "tauri-plugin-gamepad-api";
+
+// Tauriが利用可能かチェック
+const isTauriAvailable = () => {
+  return typeof window !== 'undefined' && 
+         typeof window.__TAURI_INTERNALS__ !== 'undefined';
+};
 
 type KeyStatus = {
   isPressed: boolean;
@@ -60,11 +66,23 @@ function getScratchType({
 
 const useController = (index: number) => {
   const [controllerStatus, setControllerStatus] = useState<ControllerStatus>();
+  const [getGamepads, setGetGamepads] = useState<GetGamepadsType | null>(null);
 
   function captureControllerStatus(): void {
     // コントローラーが指定されていなかったら処理終了
     if (index < 0) return setControllerStatus(undefined);
-    const pad = getGamepads()[index];
+    
+    // Tauriが利用可能でない場合は処理終了
+    if (!isTauriAvailable() || !getGamepads) return;
+    
+    let pad;
+    try {
+      pad = getGamepads()[index];
+    } catch (error) {
+      console.warn("Gamepad access failed:", error);
+      return;
+    }
+    
     if (!pad) return;
 
     const newReleaseTimes: number[] = [];
@@ -181,6 +199,22 @@ const useController = (index: number) => {
   useLayoutEffect(() => {
     savedCallback.current = captureControllerStatus;
   }, [captureControllerStatus]);
+
+  useEffect(() => {
+    // gamepadプラグインを動的にロード
+    const loadGamepadPlugin = async () => {
+      if (isTauriAvailable()) {
+        try {
+          const gamepadModule = await import("tauri-plugin-gamepad-api");
+          setGetGamepads(() => gamepadModule.getGamepads);
+        } catch (error) {
+          console.warn("Failed to load gamepad plugin:", error);
+        }
+      }
+    };
+
+    loadGamepadPlugin();
+  }, []);
 
   useEffect(() => {
     const timerId = setInterval(
