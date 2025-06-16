@@ -8,24 +8,25 @@ import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { invoke } from "@tauri-apps/api/core";
 
+
 // Tauriが利用可能かチェック
 const isTauriAvailable = () => {
   return typeof window !== 'undefined' && 
-         typeof window.__TAURI_INTERNALS__ !== 'undefined';
+         '__TAURI_INTERNALS__' in window;
 };
 
 const appWindow = isTauriAvailable() ? getCurrentWebviewWindow() : null;
 
 function App() {
-  const [gamepads, setGamepads] = useState<Gamepad[] | any[]>([]);
   const [selectedGamepadIndex, setSelectedGamepadIndex] = useState(-1);
-  const [getGamepads, setGetGamepads] = useState<GetGamepadsType | null>(null);
+  const [getGamepads, setGetGamepads] = useState<typeof GetGamepadsType | null>(null);
   const { controllerStatus, resetCount } = useController(selectedGamepadIndex);
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [isRecievedMode, setIsRecievedMode] = useState(false);
   const [recievedStatus, setRecievedStatus] = useState<any>(null);
   const [ipAddress, setIpAddress] = useState<string>("127.0.0.1");
   const [isServerMode, setIsServerMode] = useState(false);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(true);
 
   const status = isRecievedMode ? recievedStatus : controllerStatus;
 
@@ -33,16 +34,38 @@ function App() {
     ws.send(JSON.stringify(controllerStatus));
   }
 
-  const updateGamepads = () => {
-    if (isTauriAvailable() && getGamepads) {
+
+  const detectGamepadInput = () => {
+    if (!isAutoDetecting || selectedGamepadIndex !== -1) return;
+    
+    if (getGamepads) {
       try {
-        setGamepads([...getGamepads()].filter(Boolean));
+        const currentGamepads = [...getGamepads()].filter(Boolean);
+        
+        for (const gamepad of currentGamepads) {
+          // buttons配列が存在することを確認
+          if (!gamepad?.buttons || !Array.isArray(gamepad.buttons)) {
+            console.warn(`Gamepad ${gamepad?.index} has invalid buttons array`);
+            continue;
+          }
+          
+          // 各ボタンの状態をチェック
+          const pressedButton = gamepad.buttons.findIndex((button: any, _: number) => {
+            // button オブジェクトの存在とpressedプロパティを確認
+            return button && typeof button.pressed === 'boolean' && button.pressed;
+          });
+          
+          if (pressedButton !== -1) {
+            console.log(`Button ${pressedButton} pressed on gamepad ${gamepad.index}`);
+            setSelectedGamepadIndex(gamepad.index);
+            setIsAutoDetecting(false);
+            if (!ws) connectWebSocket();
+            break;
+          }
+        }
       } catch (error) {
-        console.warn("Gamepad not available:", error);
-        setGamepads([]);
+        console.error("Error during gamepad input detection:", error);
       }
-    } else {
-      setGamepads([]);
     }
   };
 
@@ -86,11 +109,6 @@ function App() {
 
     loadGamepadPlugin();
 
-    window.addEventListener("gamepadconnected", updateGamepads);
-    window.addEventListener("gamepaddisconnected", updateGamepads);
-
-    // 初回ロード時にゲームパッドの状態を更新
-    updateGamepads();
 
     (async () => {
       if (isTauriAvailable()) {
@@ -102,16 +120,23 @@ function App() {
       }
     })();
     return () => {
-      window.removeEventListener("gamepadconnected", updateGamepads);
-      window.removeEventListener("gamepaddisconnected", updateGamepads);
       if (ws) ws.close();
     };
   }, []);
 
-  const handleGamepadChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedGamepadIndex(parseInt(e.target.value, 10));
-    if (!ws) connectWebSocket();
-  };
+  // ゲームパッドの自動検出
+  useEffect(() => {
+    if (!getGamepads) return;
+    
+    const interval = setInterval(() => {
+      if (isAutoDetecting && selectedGamepadIndex === -1) {
+        detectGamepadInput();
+      }
+    }, 100); // 100msごとに検出
+
+    return () => clearInterval(interval);
+  }, [getGamepads, isAutoDetecting, selectedGamepadIndex, ws]);
+
 
   const close = () => {
     if (appWindow) {
@@ -123,9 +148,9 @@ function App() {
   const handleReloadClick = () => {
     resetCount();
     setSelectedGamepadIndex(-1);
-    updateGamepads();
     if (ws) ws.close();
     setIsRecievedMode(false);
+    setIsAutoDetecting(true);
   };
 
   return (
@@ -160,18 +185,9 @@ function App() {
       <div className="container">
         {!controllerStatus && !isRecievedMode && (
           <>
-            <select
-              onChange={handleGamepadChange}
-              value={selectedGamepadIndex}
-              style={{ width: "100%", maxWidth: "100%", marginBottom: "5px" }}
-            >
-              <option value="-1">コントローラーを選択してください</option>
-              {gamepads.map((gamepad: Gamepad) => (
-                <option key={gamepad.index} value={gamepad.index}>
-                  {gamepad.id}
-                </option>
-              ))}
-            </select>
+            <p style={{ textAlign: "center", marginBottom: "10px" }}>
+              コントローラーのボタンを押してください
+            </p>
             <p>
               <input
                 type="text"
