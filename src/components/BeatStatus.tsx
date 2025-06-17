@@ -1,4 +1,5 @@
-import { ControllerStatus } from "../hooks/useController";
+import React from 'react';
+import { ControllerStatus } from "../types/controller";
 
 export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
   status,

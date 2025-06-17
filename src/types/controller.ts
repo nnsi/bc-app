@@ -61,7 +61,7 @@ export interface ControllerStatus {
 /**
  * 物理ボタン番号から鍵盤番号へのマッピング
  */
-export const KEY_MAPPING: Record<string, number> = {
+export const KEY_MAPPING = {
   "5": 0,  // 1鍵
   "1": 1,  // 2鍵
   "2": 2,  // 3鍵

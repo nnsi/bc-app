@@ -53,7 +53,7 @@ export function useGamepadDetection({
   const [getGamepads, setGetGamepads] = useState<typeof GetGamepadsType | null>(null);
   const [isDetecting, setIsDetecting] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Tauriが利用可能かチェック
   const isTauriAvailable = useCallback(() => {

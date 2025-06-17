@@ -28,7 +28,7 @@ const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status }
 };
 
 // statusオブジェクトの参照が頻繁に変わるため、深い比較が必要
-export const ControllerDisplay = memo(ControllerDisplayComponent, (prevProps, nextProps) => {
+export const ControllerDisplay = memo(ControllerDisplayComponent, () => {
   // ここでは単純に常に再レンダリングを許可
   // より高度な最適化が必要な場合は、compareControllerStatus関数を使用
   return false;
