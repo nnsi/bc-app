@@ -16,9 +16,9 @@
       "icons/icon.ico"
     ]
   },
-  "productName": "bc-app",
-  "mainBinaryName": "bc-app",
-  "version": "0.0.0",
+  "productName": "bc",
+  "mainBinaryName": "bc",
+  "version": "0.0.1",
   "identifier": "nsi.dev",
   "plugins": {},
   "app": {
@@ -26,7 +26,7 @@
       {
         "fullscreen": false,
         "resizable": false,
-        "title": "counter",
+        "title": "bc",
         "width": 410,
         "height": 250,
         "transparent": true,
