@@ -5,6 +5,9 @@ on:
     branches:
       - release
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: windows-latest
@@ -30,26 +33,36 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
       - name: Build Tauri app
         run: npm run tauri build -- --no-bundle
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ github.run_number }}
-          release_name: BC App v${{ github.run_number }}
-          draft: false
-          prerelease: false
+      - name: Check if executable exists
+        run: |
+          if (-not (Test-Path "./src-tauri/target/release/bc.exe")) {
+            Write-Error "Build failed: bc.exe not found"
+            exit 1
+          }
+          Write-Host "Build successful: bc.exe found"
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        uses: ncipollo/release-action@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./src-tauri/target/release/bc.exe
-          asset_name: bc.exe
-          asset_content_type: application/octet-stream
+          artifacts: "./src-tauri/target/release/bc.exe"
+          artifactErrorsFailBuild: true
+          tag: v${{ steps.package-version.outputs.VERSION }}
+          name: BC App v${{ steps.package-version.outputs.VERSION }}
+          body: |
+            Release v${{ steps.package-version.outputs.VERSION }}
+            
+            Download `bc.exe` from the assets below.
+            
+            SHA: ${{ github.sha }}
+          allowUpdates: true
+          skipIfReleaseExists: true
+          token: ${{ secrets.GITHUB_TOKEN }}
