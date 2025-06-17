@@ -4,14 +4,9 @@ on:
   push:
     branches:
       - release
-  pull_request:
-    branches:
-      - release
-    types: [closed]
 
 jobs:
   release:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     runs-on: windows-latest
     
     steps:
@@ -36,13 +31,25 @@ jobs:
         run: npm ci
 
       - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+        run: npm run tauri build
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'BC App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false
+          tag_name: v${{ github.run_number }}
+          release_name: BC App v${{ github.run_number }}
+          draft: false
           prerelease: false
-          args: -- --bundles msi,nsis
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./src-tauri/target/release/bc.exe
+          asset_name: bc.exe
+          asset_content_type: application/octet-stream
