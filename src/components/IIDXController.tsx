@@ -1,6 +1,6 @@
 import React from "react";
 import styled from "styled-components";
-import { ControllerStatus } from "../hooks/useController";
+import { ControllerStatus } from "../types/controller";
 
 const Scratch: React.FC<{ className?: string; state: number }> = ({
   className,

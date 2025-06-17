@@ -52,5 +52,5 @@ export const APP = {
   /** アプリケーション名 */
   NAME: '打鍵カウンタ',
   /** デバッグモード（開発環境でのみtrue） */
-  DEBUG: process.env.NODE_ENV === 'development',
+  DEBUG: import.meta.env.DEV,
 } as const;

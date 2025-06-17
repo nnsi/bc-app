@@ -1,49 +1,19 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import type { getGamepads as GetGamepadsType } from "tauri-plugin-gamepad-api";
+import type { ControllerStatus, KeyStatus, ScratchStatus, Record } from "../types/controller";
+import { KEY_MAPPING } from "../types/controller";
+
+// Tauri型定義の拡張
+declare global {
+  interface Window {
+    __TAURI_INTERNALS__?: unknown;
+  }
+}
 
 // Tauriが利用可能かチェック
 const isTauriAvailable = () => {
   return typeof window !== 'undefined' && 
          typeof window.__TAURI_INTERNALS__ !== 'undefined';
 };
-
-type KeyStatus = {
-  isPressed: boolean;
-  isChangedState: boolean;
-  beforeState: boolean;
-  beforeStateTime: number;
-  releaseTime: number;
-  strokeCount: number;
-};
-
-type ScratchStatus = {
-  currentAxes: number;
-  previousAxes: number | undefined;
-  fixedStateTime: number;
-  state: -1 | 0 | 1;
-  count: number;
-};
-
-type Record = {
-  releaseTimes: number[];
-  pressedTimes: number[];
-};
-
-export type ControllerStatus = {
-  keys: KeyStatus[];
-  scratch: ScratchStatus;
-  record: Record;
-};
-
-const KEY_MAPPING = {
-  "5": 0,
-  "1": 1,
-  "2": 2,
-  "4": 3,
-  "7": 4,
-  "8": 5,
-  "9": 6,
-} as const;
 
 // スクラッチの状態を保存するミリ秒数
 const FIXED_SCRATCH_STATE_TIME = 200;
@@ -66,7 +36,7 @@ function getScratchType({
 
 const useController = (index: number) => {
   const [controllerStatus, setControllerStatus] = useState<ControllerStatus>();
-  const [getGamepads, setGetGamepads] = useState<GetGamepadsType | null>(null);
+  const [getGamepads, setGetGamepads] = useState<(() => (Gamepad | null)[]) | null>(null);
 
   function captureControllerStatus(): void {
     // コントローラーが指定されていなかったら処理終了
@@ -89,7 +59,7 @@ const useController = (index: number) => {
     const newPressedTimes: number[] = [];
     const unixTime = new Date().getTime();
 
-    const keyStatus = pad.buttons.reduce((arr, button, i) => {
+    const keyStatus = pad.buttons.reduce<KeyStatus[]>((arr, button, i) => {
       // マッピングに存在しないボタンはスルー
       if (!(i in KEY_MAPPING)) return arr;
 
@@ -141,7 +111,7 @@ const useController = (index: number) => {
     const fixedStateScratchTime =
       pad.axes[1] != prevScratchState?.currentAxes
         ? FIXED_SCRATCH_STATE_TIME
-        : Math.max(prevScratchState?.fixedStateTime - LOOP_MILLI_SECONDS, 0);
+        : Math.max((prevScratchState?.fixedStateTime ?? 0) - LOOP_MILLI_SECONDS, 0);
     const scratchState = getScratchType({
       current: pad.axes[1],
       prev: controllerStatus?.scratch.currentAxes ?? pad.axes[1],
@@ -158,12 +128,11 @@ const useController = (index: number) => {
         ? (prevScratchState?.count ?? 0) + 1
         : prevScratchState?.count ?? 0;
 
-    const scratchStatus = {
+    const scratchStatus: ScratchStatus = {
       currentAxes: pad.axes[1],
       previousAxes: controllerStatus?.scratch.currentAxes,
       fixedStateTime: fixedStateScratchTime,
       state: scratchStateType,
-      beforeState: prevScratchState?.state ?? 0,
       count: scratchCount,
     };
 

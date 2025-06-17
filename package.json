@@ -1,7 +1,7 @@
 {
   "name": "bc-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -19,7 +19,6 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",
     "styled-components": "^6.1.6",
-    "ws": "^8.17.1",
     "tauri-plugin-gamepad-api": "^0.0.5"
   },
   "devDependencies": {

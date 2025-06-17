@@ -53,7 +53,7 @@ export function useWebSocket({
   const [state, setState] = useState<WebSocketState>(WebSocketState.DISCONNECTED);
   const [error, setError] = useState<WebSocketError | null>(null);
   const [receivedData, setReceivedData] = useState<ControllerStatus | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (ws?.readyState === WebSocket.OPEN) {
