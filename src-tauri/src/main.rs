@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use futures_util::{SinkExt, StreamExt};
-use std::net::TcpListener;
+use std::net::{TcpListener, IpAddr};
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use warp::ws::{Message, WebSocket};
@@ -24,6 +24,15 @@ fn is_port_in_use(port: u16) -> bool {
 #[tauri::command]
 fn check_websocket_status(state: tauri::State<bool>) -> bool {
     *state.inner()
+}
+
+#[tauri::command]
+fn get_local_ip() -> Result<String, String> {
+    // Get local network interfaces
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").map_err(|e| e.to_string())?;
+    socket.connect("8.8.8.8:80").map_err(|e| e.to_string())?;
+    let local_ip = socket.local_addr().map_err(|e| e.to_string())?;
+    Ok(local_ip.ip().to_string())
 }
 
 fn main() {
@@ -71,7 +80,7 @@ fn main() {
             Ok(())
         })
         .plugin(tauri_plugin_gamepad::init())
-        .invoke_handler(tauri::generate_handler![check_websocket_status])
+        .invoke_handler(tauri::generate_handler![check_websocket_status, get_local_ip])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

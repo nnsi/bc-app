@@ -7,6 +7,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { HEADER_STYLES } from '../constants/styles';
 import { APP } from '../constants/app';
+import { useLocalIp } from '../hooks/useLocalIp';
 
 interface AppHeaderProps {
   /** サーバーモードかどうか */
@@ -26,10 +27,17 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   onReload,
   onClose,
 }) => {
+  const { localIp } = useLocalIp();
+  
   return (
     <header data-tauri-drag-region style={HEADER_STYLES}>
       <span style={{ marginLeft: '0' }}>
         {APP.NAME}[{isServerMode ? 'Server' : 'Client'} Mode]
+        {isServerMode && localIp && (
+          <span style={{ marginLeft: '10px', fontSize: '12px', opacity: 0.8 }}>
+            {localIp}
+          </span>
+        )}
       </span>
       <span
         onClick={onReload}
