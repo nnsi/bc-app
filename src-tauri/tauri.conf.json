@@ -18,7 +18,7 @@
   },
   "productName": "bc",
   "mainBinaryName": "bc",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "identifier": "nsi.dev",
   "plugins": {},
   "app": {
