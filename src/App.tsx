@@ -12,7 +12,7 @@ import { useGamepadDetection } from "./hooks/useGamepadDetection";
 import { useTauriWindow } from "./hooks/useTauriWindow";
 import { useAppMode } from "./hooks/useAppMode";
 import { compareControllerStatus } from "./utils/compareControllerStatus";
-
+import "@fontsource/noto-sans"
 
 
 /**
@@ -22,6 +22,8 @@ import { compareControllerStatus } from "./utils/compareControllerStatus";
 function App() {
   // 接続設定
   const [ipAddress, setIpAddress] = useState<string>(WEBSOCKET.DEFAULT_IP);
+  // プレイヤーサイド (1P: false, 2P: true)
+  const [is2P, setIs2P] = useState<boolean>(false);
   
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
@@ -89,7 +91,7 @@ function App() {
   }, [connectWebSocket, setReceiveMode]);
 
   return (
-    <>
+    <div style={{ fontFamily: "Noto Sans JP" }}>
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
@@ -113,9 +115,9 @@ function App() {
             />
           </>
         )}
-        {status && <ControllerDisplay status={status} />}
+        {status && <ControllerDisplay status={status} is2P={is2P} onPlayerSideChange={setIs2P} />}
       </div>
-    </>
+    </div>
   );
 }
 

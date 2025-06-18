@@ -25,7 +25,7 @@ export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
       : 0;
   return (
     <p style={{ marginTop: 0 }}>
-      {releaseAverage} ms | {density} / s | {count}
+      {releaseAverage.toString().padStart(2, '0')} ms | {density.toString().padStart(2, '0')} / s <br />{count}
     </p>
   );
 };

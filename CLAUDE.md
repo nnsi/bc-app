@@ -18,6 +18,8 @@
 - `npm run tauri dev` - Tauriアプリを開発モードで実行（フロントエンド開発サーバーを含む）
 - `npm run tauri build` - Tauriアプリの本番用ビルド
 
+Windows環境で動かしているので、Claude Codeがnpm run devを行うのは禁止です。
+
 ## アーキテクチャ概要
 
 これは以下の技術で構築された**beatmania IIDX コントローラー入力トラッカー**です：
