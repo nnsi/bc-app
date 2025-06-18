@@ -10,19 +10,41 @@ import { ControllerStatus } from '../types/controller';
 interface ControllerDisplayProps {
   /** コントローラーの状態 */
   status: ControllerStatus;
+  /** 2Pモードかどうか */
+  is2P: boolean;
+  /** プレイヤーサイド変更ハンドラ */
+  onPlayerSideChange: (is2P: boolean) => void;
 }
 
 /**
  * コントローラー表示
  * IIDXコントローラーの視覚表現とビート統計を表示
  */
-const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status }) => {
+const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status, is2P, onPlayerSideChange }) => {
   return (
     <>
-      <IIDXController status={status} />
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <BeatStatus status={status} />
+      <div style={{ position:"absolute", bottom:"0.5rem", "right":"1rem",display: 'flex', justifyContent: 'center', gap: '20px' }}>
+        <label>
+          <input
+            type="radio"
+            name="playerSide"
+            checked={!is2P}
+            onChange={() => onPlayerSideChange(false)}
+          />
+          1P
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="playerSide"
+            checked={is2P}
+            onChange={() => onPlayerSideChange(true)}
+          />
+          2P
+        </label>
       </div>
+      <IIDXController status={status} is2P={is2P} />
+      <BeatStatus status={status} />
     </>
   );
 };
