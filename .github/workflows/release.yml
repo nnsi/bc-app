@@ -50,6 +50,38 @@ jobs:
           }
           Write-Host "Build successful: bc.exe found"
 
+      - name: Get PR body
+        id: pr-body
+        shell: bash
+        run: |
+          # Install GitHub CLI if not available
+          if ! command -v gh &> /dev/null; then
+            echo "Installing GitHub CLI..."
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh -y
+          fi
+          
+          # Get the most recent merged PR to release branch
+          PR_NUMBER=$(gh pr list --base release --state merged --limit 1 --json number -q '.[0].number')
+          
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No merged PR found"
+            echo "PR_BODY=Release v${{ steps.package-version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+          else
+            # Get PR body
+            PR_BODY=$(gh pr view $PR_NUMBER --json body -q .body)
+            echo "PR_BODY<<EOF" >> $GITHUB_OUTPUT
+            echo "$PR_BODY" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "---" >> $GITHUB_OUTPUT
+            echo "SHA: ${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
@@ -57,12 +89,7 @@ jobs:
           artifactErrorsFailBuild: true
           tag: v${{ steps.package-version.outputs.VERSION }}
           name: BC App v${{ steps.package-version.outputs.VERSION }}
-          body: |
-            Release v${{ steps.package-version.outputs.VERSION }}
-            
-            Download `bc.exe` from the assets below.
-            
-            SHA: ${{ github.sha }}
+          body: ${{ steps.pr-body.outputs.PR_BODY }}
           allowUpdates: true
           skipIfReleaseExists: true
           token: ${{ secrets.GITHUB_TOKEN }}
