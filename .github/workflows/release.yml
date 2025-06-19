@@ -71,14 +71,18 @@ jobs:
           name: bc-windows
           path: ./src-tauri/target/release/bc.exe
 
+      - name: List macOS build outputs
+        if: matrix.os == 'macos-latest'
+        run: |
+          echo "=== Bundle directory structure ==="
+          find ./src-tauri/target/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -20
+          
       - name: Upload macOS artifact
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: bc-macos
-          path: |
-            ./src-tauri/target/release/bundle/macos/*.app
-            ./src-tauri/target/release/bundle/dmg/*.dmg
+          path: ./src-tauri/target/release/bundle/dmg/*.dmg
 
   create-release:
     needs: release
@@ -130,16 +134,68 @@ jobs:
 
       - name: Rename artifacts
         run: |
-          mv ./bc-windows/bc.exe ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe
-          if [ -f "./bc-macos/*.dmg" ]; then
-            mv ./bc-macos/*.dmg ./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
+          # Debug: List downloaded artifact structure
+          echo "=== Artifact structure ==="
+          ls -la
+          echo "=== bc-windows contents ==="
+          ls -la ./bc-windows/ || echo "bc-windows directory not found"
+          echo "=== bc-macos contents ==="
+          ls -la ./bc-macos/ || echo "bc-macos directory not found"
+          
+          # Rename Windows artifact
+          if [ -f "./bc-windows/bc.exe" ]; then
+            mv ./bc-windows/bc.exe ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe
+          else
+            echo "Error: Windows executable not found"
+            exit 1
+          fi
+          
+          # Find and rename macOS DMG
+          # The DMG should be directly in bc-macos directory after download
+          DMG_FILE=$(find ./bc-macos -name "*.dmg" -type f 2>/dev/null | head -1)
+          if [ -n "$DMG_FILE" ]; then
+            echo "Found DMG: $DMG_FILE"
+            mv "$DMG_FILE" ./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
+          else
+            echo "Warning: No DMG file found in bc-macos directory"
+            echo "Contents of bc-macos:"
+            find ./bc-macos -type f 2>/dev/null || echo "bc-macos directory is empty or doesn't exist"
           fi
 
+      - name: Prepare artifact list
+        id: artifacts
+        run: |
+          # Build artifact list
+          ARTIFACTS=""
+          
+          # Add Windows artifact if it exists
+          if [ -f "./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe" ]; then
+            ARTIFACTS="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe"
+          fi
+          
+          # Add macOS artifact if it exists
+          if [ -f "./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg" ]; then
+            if [ -n "$ARTIFACTS" ]; then
+              ARTIFACTS="$ARTIFACTS,./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
+            else
+              ARTIFACTS="./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
+            fi
+          fi
+          
+          # Ensure we have at least one artifact
+          if [ -z "$ARTIFACTS" ]; then
+            echo "Error: No artifacts found to upload"
+            exit 1
+          fi
+          
+          echo "ARTIFACTS=$ARTIFACTS" >> $GITHUB_OUTPUT
+          echo "Artifacts to upload: $ARTIFACTS"
+          
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe,./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
-          artifactErrorsFailBuild: true
+          artifacts: ${{ steps.artifacts.outputs.ARTIFACTS }}
+          artifactErrorsFailBuild: false
           tag: v${{ steps.package-version.outputs.VERSION }}
           name: BC App v${{ steps.package-version.outputs.VERSION }}
           body: ${{ steps.pr-body.outputs.PR_BODY }}
