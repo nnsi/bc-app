@@ -57,6 +57,7 @@ const useController = (index: number) => {
 
     const newReleaseTimes: number[] = [];
     const newPressedTimes: number[] = [];
+    const newScratchTimes: number[] = [];
     const unixTime = new Date().getTime();
 
     const keyStatus = pad.buttons.reduce<KeyStatus[]>((arr, button, i) => {
@@ -127,6 +128,11 @@ const useController = (index: number) => {
       scratchState !== 0 && prevScratchState?.state !== scratchStateType
         ? (prevScratchState?.count ?? 0) + 1
         : prevScratchState?.count ?? 0;
+    
+    // スクラッチ回転時にnewScratchTimesに追加
+    if (scratchState !== 0 && prevScratchState?.state !== scratchStateType) {
+      newScratchTimes.push(unixTime);
+    }
 
     const scratchStatus: ScratchStatus = {
       currentAxes: pad.axes[1],
@@ -146,6 +152,9 @@ const useController = (index: number) => {
       pressedTimes: controllerStatus
         ? [...newPressedTimes, ...controllerStatus.record.pressedTimes]
         : newPressedTimes,
+      scratchTimes: controllerStatus
+        ? [...newScratchTimes, ...(controllerStatus.record.scratchTimes || [])]
+        : newScratchTimes,
     };
 
     record.releaseTimes.length =
@@ -153,6 +162,9 @@ const useController = (index: number) => {
 
     record.pressedTimes.length =
       record.pressedTimes.length > 500 ? 500 : record.pressedTimes.length;
+    
+    record.scratchTimes.length =
+      record.scratchTimes.length > 500 ? 500 : record.scratchTimes.length;
 
     setControllerStatus({
       keys: keyStatus,

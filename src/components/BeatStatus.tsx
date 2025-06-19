@@ -9,9 +9,13 @@ export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
     status.scratch.count;
 
   const unixTime = new Date().getTime();
-  const density = status.record.pressedTimes.filter(
+  const buttonDensity = status.record.pressedTimes.filter(
     (pressedTime) => pressedTime > unixTime - 1000
   ).length;
+  const scratchDensity = (status.record.scratchTimes || []).filter(
+    (scratchTime) => scratchTime > unixTime - 1000
+  ).length;
+  const density = buttonDensity + scratchDensity;
   status.record.releaseTimes.length =
     status.record.releaseTimes.length > 2000
       ? 2000

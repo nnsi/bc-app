@@ -44,6 +44,8 @@ export interface Record {
   releaseTimes: number[];
   /** 打鍵時刻の配列(最大500件、UNIX時間) */
   pressedTimes: number[];
+  /** スクラッチ回転時刻の配列(最大500件、UNIX時間) */
+  scratchTimes: number[];
 }
 
 /**
@@ -83,6 +85,8 @@ export const CONTROLLER_CONSTANTS = {
   MAX_RELEASE_TIMES: 2000,
   /** 記録する打鍵時刻の最大数 */
   MAX_PRESSED_TIMES: 500,
+  /** 記録するスクラッチ時刻の最大数 */
+  MAX_SCRATCH_TIMES: 500,
   /** ロングノートとみなす最小時間(ミリ秒) */
   LONG_NOTE_THRESHOLD: 200,
 } as const;
