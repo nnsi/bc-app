@@ -1,31 +1,26 @@
-name: Release
+name: Release CI
 
 on:
   push:
-    branches:
-      - release
-
-permissions:
-  contents: write
+    tags:
+      - 'v*'
+  workflow_dispatch:
 
 jobs:
   release:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    
+        platform: [windows-latest]
+    runs-on: ${{ matrix.platform }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Rust stable
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Rust cache
@@ -33,227 +28,50 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Sync node version and setup cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
 
-      - name: Get version from package.json
-        id: package-version
-        shell: bash
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build the app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'bc-app ${{ github.ref_name }}'
+          releaseBody: |
+            See the assets to download this version and install.
+            
+            **Available downloads:**
+            - `bc_${{ github.ref_name }}_x64-setup.exe` - NSIS installer (recommended for most users)
+            - `bc_${{ github.ref_name }}_x64.exe` - Standalone executable (portable version)
+          releaseDraft: true
+          prerelease: false
+
+      - name: Find and prepare raw exe
+        shell: pwsh
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Build Tauri app
-        run: npm run tauri build
-
-      - name: List build outputs
-        shell: bash
-        run: |
-          echo "=== Checking build outputs ==="
-          echo "Release directory:"
-          ls -la ./src-tauri/target/release/ || echo "Release directory not found"
-          echo ""
-          echo "Bundle directory:"
-          ls -la ./src-tauri/target/release/bundle/ || echo "Bundle directory not found"
-          echo ""
-          if [ -d "./src-tauri/target/release/bundle" ]; then
-            echo "Bundle subdirectories:"
-            find ./src-tauri/target/release/bundle -type d -maxdepth 2
-            echo ""
-            echo "All files in bundle:"
-            find ./src-tauri/target/release/bundle -type f | head -20
-          fi
-
-      - name: Check if executable exists (Windows)
-        if: matrix.os == 'windows-latest'
-        run: |
-          # Check for NSIS installer
-          $nsisInstaller = Get-ChildItem -Path "./src-tauri/target/release/bundle/nsis/" -Filter "*-setup.exe" -ErrorAction SilentlyContinue
-          if (-not $nsisInstaller) {
-            Write-Error "Build failed: NSIS installer not found"
+          # Find the raw exe in the target directory
+          $exePath = Get-ChildItem -Path "src-tauri/target/release" -Filter "bc.exe" -File | Select-Object -First 1
+          if ($exePath) {
+            Write-Host "Found exe at: $($exePath.FullName)"
+            # Rename to include version for clarity
+            $version = "${{ github.ref_name }}"
+            Copy-Item $exePath.FullName -Destination "bc_${version}_x64.exe"
+            Write-Host "Copied to bc_${version}_x64.exe"
+          } else {
+            Write-Error "Could not find bc.exe in target/release"
             exit 1
           }
-          Write-Host "Build successful: NSIS installer found at $($nsisInstaller.FullName)"
 
-      - name: Check if executable exists (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          if [ ! -f "./src-tauri/target/release/bc" ]; then
-            echo "Build failed: bc not found"
-            exit 1
-          fi
-          echo "Build successful: bc found"
-
-      - name: Upload Windows artifact
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
+      - name: Upload raw exe to release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: bc-windows
-          path: ./src-tauri/target/release/bundle/nsis/*-setup.exe
-
-      - name: List macOS build outputs
-        if: matrix.os == 'macos-latest'
-        run: |
-          echo "=== Bundle directory structure ==="
-          find ./src-tauri/target/release/bundle -type f -name "*.dmg" -o -name "*.app" | head -20
-          
-      - name: Upload macOS artifact
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bc-macos
-          path: ./src-tauri/target/release/bundle/dmg/*.dmg
-
-  create-release:
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Get version from package.json
-        id: package-version
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-
-      - name: List downloaded artifacts
-        run: |
-          echo "=== All downloaded artifacts ==="
-          find ./artifacts -type f -ls
-          echo "=== Directory structure ==="
-          ls -la ./artifacts/
-
-      - name: Get PR body
-        id: pr-body
-        shell: bash
-        run: |
-          # Install GitHub CLI if not available
-          if ! command -v gh &> /dev/null; then
-            echo "Installing GitHub CLI..."
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh -y
-          fi
-          
-          # Get the most recent merged PR to release branch
-          PR_NUMBER=$(gh pr list --base release --state merged --limit 1 --json number -q '.[0].number')
-          
-          if [ -z "$PR_NUMBER" ]; then
-            echo "No merged PR found"
-            echo "PR_BODY=Release v${{ steps.package-version.outputs.VERSION }}" >> $GITHUB_OUTPUT
-          else
-            # Get PR body
-            PR_BODY=$(gh pr view $PR_NUMBER --json body -q .body)
-            echo "PR_BODY<<EOF" >> $GITHUB_OUTPUT
-            echo "$PR_BODY" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "---" >> $GITHUB_OUTPUT
-            echo "SHA: ${{ github.sha }}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Rename artifacts
-        run: |
-          # Debug: List downloaded artifact structure
-          echo "=== Working directory ==="
-          pwd
-          echo "=== Current directory contents ==="
-          ls -la
-          echo "=== Artifacts directory contents ==="
-          ls -la ./artifacts/ || echo "artifacts directory not found"
-          echo "=== bc-windows contents ==="
-          ls -la ./artifacts/bc-windows/ || echo "bc-windows directory not found"
-          echo "=== bc-macos contents ==="
-          ls -la ./artifacts/bc-macos/ || echo "bc-macos directory not found"
-          
-          # Rename Windows artifact
-          # Find the NSIS installer
-          WINDOWS_INSTALLER=$(find ./artifacts/bc-windows -name "*-setup.exe" -type f 2>/dev/null | head -1)
-          if [ -n "$WINDOWS_INSTALLER" ]; then
-            mv "$WINDOWS_INSTALLER" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe
-            echo "Windows installer renamed successfully from $WINDOWS_INSTALLER"
-          else
-            echo "Error: Windows installer not found"
-            echo "Searching for setup.exe files..."
-            find ./artifacts -name "*-setup.exe" -type f 2>/dev/null || echo "No setup.exe files found"
-            # Also search for any exe files
-            echo "All exe files in artifacts:"
-            find ./artifacts -name "*.exe" -type f 2>/dev/null || echo "No exe files found"
-          fi
-          
-          # Find and rename macOS DMG
-          DMG_FILE=$(find ./artifacts/bc-macos -name "*.dmg" -type f 2>/dev/null | head -1)
-          if [ -n "$DMG_FILE" ]; then
-            echo "Found DMG: $DMG_FILE"
-            mv "$DMG_FILE" ./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
-            echo "macOS artifact renamed successfully"
-          else
-            echo "Warning: No DMG file found in bc-macos directory"
-            echo "Searching for DMG files..."
-            find ./artifacts -name "*.dmg" -type f 2>/dev/null || echo "No DMG files found anywhere"
-          fi
-
-      - name: Prepare artifact list
-        id: artifacts
-        run: |
-          # List files in current directory to debug
-          echo "=== Files in current directory ==="
-          ls -la *.exe *.dmg 2>/dev/null || echo "No exe or dmg files in current directory"
-          
-          # Build artifact list
-          ARTIFACTS=""
-          
-          # Add Windows artifact if it exists
-          WINDOWS_INSTALLER="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe"
-          if [ -f "$WINDOWS_INSTALLER" ]; then
-            ARTIFACTS="$WINDOWS_INSTALLER"
-            echo "Found Windows artifact: $WINDOWS_INSTALLER"
-          else
-            echo "Warning: Windows artifact not found at $WINDOWS_INSTALLER"
-          fi
-          
-          # Add macOS artifact if it exists
-          MACOS_DMG="./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
-          if [ -f "$MACOS_DMG" ]; then
-            if [ -n "$ARTIFACTS" ]; then
-              ARTIFACTS="$ARTIFACTS,$MACOS_DMG"
-            else
-              ARTIFACTS="$MACOS_DMG"
-            fi
-            echo "Found macOS artifact: $MACOS_DMG"
-          else
-            echo "Warning: macOS artifact not found at $MACOS_DMG"
-          fi
-          
-          # Ensure we have at least one artifact
-          if [ -z "$ARTIFACTS" ]; then
-            echo "Error: No artifacts found to upload"
-            echo "Expected artifacts:"
-            echo "  - $WINDOWS_INSTALLER"
-            echo "  - $MACOS_DMG"
-            exit 1
-          fi
-          
-          echo "ARTIFACTS=$ARTIFACTS" >> $GITHUB_OUTPUT
-          echo "Artifacts to upload: $ARTIFACTS"
-          
-      - name: Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          artifacts: ${{ steps.artifacts.outputs.ARTIFACTS }}
-          artifactErrorsFailBuild: true
-          tag: v${{ steps.package-version.outputs.VERSION }}
-          name: BC App v${{ steps.package-version.outputs.VERSION }}
-          body: ${{ steps.pr-body.outputs.PR_BODY }}
-          allowUpdates: true
-          skipIfReleaseExists: true
+          files: bc_${{ github.ref_name }}_x64.exe
           token: ${{ secrets.GITHUB_TOKEN }}
