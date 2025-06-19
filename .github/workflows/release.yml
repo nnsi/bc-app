@@ -10,7 +10,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     
     steps:
       - name: Checkout repository
@@ -35,20 +38,63 @@ jobs:
 
       - name: Get version from package.json
         id: package-version
+        shell: bash
         run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build Tauri app
-        run: npm run tauri build -- --no-bundle
+        run: npm run tauri build
 
-      - name: Check if executable exists
+      - name: Check if executable exists (Windows)
+        if: matrix.os == 'windows-latest'
         run: |
           if (-not (Test-Path "./src-tauri/target/release/bc.exe")) {
             Write-Error "Build failed: bc.exe not found"
             exit 1
           }
           Write-Host "Build successful: bc.exe found"
+
+      - name: Check if executable exists (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          if [ ! -f "./src-tauri/target/release/bc" ]; then
+            echo "Build failed: bc not found"
+            exit 1
+          fi
+          echo "Build successful: bc found"
+
+      - name: Upload Windows artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-windows
+          path: ./src-tauri/target/release/bc.exe
+
+      - name: Upload macOS artifact
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bc-macos
+          path: |
+            ./src-tauri/target/release/bundle/macos/*.app
+            ./src-tauri/target/release/bundle/dmg/*.dmg
+
+  create-release:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: package-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
 
       - name: Get PR body
         id: pr-body
@@ -82,10 +128,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Rename artifacts
+        run: |
+          mv ./bc-windows/bc.exe ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe
+          if [ -f "./bc-macos/*.dmg" ]; then
+            mv ./bc-macos/*.dmg ./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
+          fi
+
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "./src-tauri/target/release/bc.exe"
+          artifacts: "./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe,./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
           artifactErrorsFailBuild: true
           tag: v${{ steps.package-version.outputs.VERSION }}
           name: BC App v${{ steps.package-version.outputs.VERSION }}

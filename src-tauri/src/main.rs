@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use futures_util::{SinkExt, StreamExt};
-use std::net::{TcpListener, IpAddr};
+use std::net::{TcpListener};
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use warp::ws::{Message, WebSocket};
