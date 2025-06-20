@@ -32,9 +32,9 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   return (
     <header data-tauri-drag-region style={HEADER_STYLES}>
       <span style={{ marginLeft: '0' }}>
-        {APP.NAME}[{isServerMode ? 'Server' : 'Client'} Mode]
+        {APP.NAME} <span style={{ color: 'gray' }}>[{isServerMode ? 'Server' : 'Client'} Mode]</span> 
         {isServerMode && localIp && (
-          <span style={{ marginLeft: '10px', fontSize: '12px', opacity: 0.8 }}>
+          <span style={{ marginLeft: '5px', fontSize: '12px', opacity: 0.8 }}>
             {localIp}
           </span>
         )}

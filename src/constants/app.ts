@@ -50,7 +50,7 @@ export const UI = {
  */
 export const APP = {
   /** アプリケーション名 */
-  NAME: '打鍵カウンタ',
+  NAME: 'IIDX Input Monitor',
   /** デバッグモード（開発環境でのみtrue） */
   DEBUG: import.meta.env.DEV,
 } as const;

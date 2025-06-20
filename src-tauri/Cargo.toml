@@ -1,7 +1,7 @@
 [package]
-name = "bc-app"
+name = "iidx-input-monitor"
 version = "0.0.2"
-description = "A Tauri App"
+description = "IIDX Input Monitor - Real-time controller input tracking for beatmania IIDX"
 authors = ["you"]
 license = ""
 repository = ""
