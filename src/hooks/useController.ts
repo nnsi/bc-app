@@ -56,6 +56,7 @@ const useController = (index: number) => {
     if (!pad) return;
 
     const newReleaseTimes: number[] = [];
+    const newKeyReleaseTimes: number[][] = [[], [], [], [], [], [], []]; // 7鍵盤分
     const newPressedTimes: number[] = [];
     const newScratchTimes: number[] = [];
     const unixTime = new Date().getTime();
@@ -92,6 +93,9 @@ const useController = (index: number) => {
       // リリース時にnewReleaseTimesに突っ込む
       if (prevState && isChangedState && button.pressed === false) {
         newReleaseTimes.push(status.releaseTime);
+        // 各鍵盤ごとのリリース時間も記録
+        const keyIndex = KEY_MAPPING[i as unknown as keyof typeof KEY_MAPPING];
+        newKeyReleaseTimes[keyIndex].push(status.releaseTime);
       }
       // 打鍵時にnewPressedTimesに突っ込む
       if (isChangedState && status.isPressed) {
@@ -145,10 +149,15 @@ const useController = (index: number) => {
     // ボタンを叩いた時間（UNIXTIME）と、離した時間（ミリ秒）を保存する
     // 200ミリ秒以上はCNとみなして保存しない
     const filteredReleaseTimes = newReleaseTimes.filter((time) => time < 200);
+    const filteredKeyReleaseTimes = newKeyReleaseTimes.map(times => times.filter(time => time < 200));
     const record: Record = {
       releaseTimes: controllerStatus
         ? [...filteredReleaseTimes, ...controllerStatus.record.releaseTimes]
         : filteredReleaseTimes,
+      keyReleaseTimes: controllerStatus
+        ? filteredKeyReleaseTimes.map((times, index) => 
+            [...times, ...(controllerStatus.record.keyReleaseTimes?.[index] || [])])
+        : filteredKeyReleaseTimes,
       pressedTimes: controllerStatus
         ? [...newPressedTimes, ...controllerStatus.record.pressedTimes]
         : newPressedTimes,
@@ -159,6 +168,11 @@ const useController = (index: number) => {
 
     record.releaseTimes.length =
       record.releaseTimes.length > 2000 ? 2000 : record.releaseTimes.length;
+    
+    // 各鍵盤のリリース時間も2000件に制限
+    record.keyReleaseTimes = record.keyReleaseTimes.map(times => {
+      return times.length > 2000 ? times.slice(0, 2000) : times;
+    });
 
     record.pressedTimes.length =
       record.pressedTimes.length > 500 ? 500 : record.pressedTimes.length;

@@ -99,13 +99,18 @@ const Button: React.FC<{
   className?: string;
   isPressed: boolean;
   index: number;
-}> = ({ className, isPressed, index }) => {
+  releaseSpeed?: number;
+}> = ({ className, isPressed, index, releaseSpeed }) => {
   return (
     <p
       className={`${className} ${isPressed && "pressed"} ${
         index % 2 === 0 ? "even" : "odd"
       }`}
-    ></p>
+    >
+      {releaseSpeed !== undefined && releaseSpeed > 0 && (
+        <span className="release-speed">{releaseSpeed}</span>
+      )}
+    </p>
   );
 };
 
@@ -117,12 +122,24 @@ const StyledButton = styled(Button)`
   position: relative;
   overflow: hidden;
   border: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &.even {
     background: #999;
   }
   &.odd {
     background: #666;
+  }
+  
+  .release-speed {
+    font-size: 14px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    position: relative;
   }
   
   &::before {
@@ -146,6 +163,10 @@ const StyledButton = styled(Button)`
       0 0 40px 4px rgba(204, 255, 255, 0.4),
       inset 0 0 10px rgba(255, 255, 255, 0.5);
     
+    .release-speed {
+      color: #333;
+    }
+    
     &::before {
       width: 150%;
       height: 150%;
@@ -158,13 +179,24 @@ const IIDXControllerComponent: React.FC<{
   status: ControllerStatus;
   is2P?: boolean;
 }> = ({ className, status, is2P = false }) => {
+  // 各鍵盤のリリーススピード平均を計算
+  const keyReleaseAverages = (status.record.keyReleaseTimes || [[], [], [], [], [], [], []]).map((times) => {
+    return times.length > 0
+      ? Math.ceil(times.reduce((v, c) => v + c, 0) / times.length)
+      : 0;
+  });
 
   if (is2P) {
     return (
       <div className={className}>
         <div className="keys">
           {status.keys.map((key, i) => (
-            <StyledButton isPressed={key.isPressed} index={i} key={i} />
+            <StyledButton 
+              isPressed={key.isPressed} 
+              index={i} 
+              key={i} 
+              releaseSpeed={keyReleaseAverages[i]}
+            />
           ))}
         </div>
         <StyledScratch state={status.scratch.state} style={{ marginRight: "-30px", marginLeft: "20px" }} />
@@ -177,7 +209,12 @@ const IIDXControllerComponent: React.FC<{
       <StyledScratch state={status.scratch.state} style={{ marginLeft: "-10px" }} />
       <div className="keys">
         {status.keys.map((key, i) => (
-          <StyledButton isPressed={key.isPressed} index={i} key={i} />
+          <StyledButton 
+            isPressed={key.isPressed} 
+            index={i} 
+            key={i} 
+            releaseSpeed={keyReleaseAverages[i]}
+          />
         ))}
       </div>
     </div>
