@@ -5,6 +5,7 @@
 import React, { memo } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import SettingsIcon from '@mui/icons-material/Settings';
 import { HEADER_STYLES } from '../constants/styles';
 import { APP } from '../constants/app';
 import { useLocalIp } from '../hooks/useLocalIp';
@@ -16,6 +17,10 @@ interface AppHeaderProps {
   onReload: () => void;
   /** クローズボタンクリック時のハンドラ */
   onClose: () => void;
+  /** 設定ボタンクリック時のハンドラ */
+  onSettings?: () => void;
+  /** 設定画面が開いているかどうか */
+  showSettings?: boolean;
 }
 
 /**
@@ -26,6 +31,8 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
   isServerMode,
   onReload,
   onClose,
+  onSettings,
+  showSettings = false,
 }) => {
   const { localIp } = useLocalIp();
   
@@ -48,6 +55,19 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
       >
         <RefreshIcon />
       </span>
+      {onSettings && (
+        <span 
+          onClick={onSettings} 
+          style={{ 
+            cursor: 'pointer',
+            color: showSettings ? '#4a9eff' : '#fff',
+            transition: 'color 0.2s ease',
+          }}
+          title="設定"
+        >
+          <SettingsIcon />
+        </span>
+      )}
       <span onClick={onClose} style={{ cursor: 'pointer' }}>
         <CloseIcon />
       </span>

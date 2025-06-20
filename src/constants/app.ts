@@ -41,6 +41,11 @@ export const UI = {
     WIDTH: 410,
     HEIGHT: 250,
   },
+  /** DPモードのウィンドウサイズ */
+  WINDOW_DP: {
+    WIDTH: 820,
+    HEIGHT: 250,
+  },
   /** ヘッダーの高さ（ピクセル） */
   HEADER_HEIGHT: 30,
 } as const;

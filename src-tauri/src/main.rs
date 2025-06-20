@@ -35,6 +35,24 @@ fn get_local_ip() -> Result<String, String> {
     Ok(local_ip.ip().to_string())
 }
 
+#[tauri::command]
+async fn resize_window(
+    window: tauri::WebviewWindow,
+    width: u32,
+    height: u32,
+) -> Result<(), String> {
+    use tauri::{LogicalSize, Size};
+    
+    // ウィンドウのサイズを変更
+    let new_size = Size::Logical(LogicalSize { width: width as f64, height: height as f64 });
+    window.set_size(new_size).map_err(|e| e.to_string())?;
+    
+    // ウィンドウを中央に配置
+    window.center().map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
 fn main() {
     let port = 2356;
     let mut is_websocket_running = false;
@@ -80,7 +98,7 @@ fn main() {
             Ok(())
         })
         .plugin(tauri_plugin_gamepad::init())
-        .invoke_handler(tauri::generate_handler![check_websocket_status, get_local_ip])
+        .invoke_handler(tauri::generate_handler![check_websocket_status, get_local_ip, resize_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
