@@ -119,20 +119,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
-name = "bc-app"
-version = "0.0.2"
-dependencies = [
- "futures-util",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-gamepad",
- "tokio",
- "warp",
-]
-
-[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1605,6 +1591,20 @@ checksum = "3acae9609540aa318d1bc588455225fb2085b9ed0c4f6bd0d9d5bcd86f1a0344"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "iidx-input-monitor"
+version = "0.0.2"
+dependencies = [
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-gamepad",
+ "tokio",
+ "warp",
 ]
 
 [[package]]

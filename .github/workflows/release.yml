@@ -76,35 +76,37 @@ jobs:
           Write-Host "Build successful: NSIS installer found at $($nsisInstaller.FullName)"
           
           # Check for raw exe
-          $rawExe = Test-Path "./src-tauri/target/release/bc.exe"
+          $rawExe = Test-Path "./src-tauri/target/release/iidxim.exe"
           if (-not $rawExe) {
-            Write-Error "Build failed: bc.exe not found"
+            Write-Error "Build failed: iidxim.exe not found"
             exit 1
           }
-          Write-Host "Build successful: bc.exe found"
+          Write-Host "Build successful: iidxim.exe found"
 
       - name: Check if executable exists (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          if [ ! -f "./src-tauri/target/release/bc" ]; then
-            echo "Build failed: bc not found"
+          if [ ! -f "./src-tauri/target/release/iidxim" ]; then
+            echo "Build failed: iidxim not found"
             exit 1
           fi
-          echo "Build successful: bc found"
+          echo "Build successful: iidxim found"
 
-      - name: Upload Windows NSIS installer
+      - name: Create Windows zip
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Create a directory for the Windows build
+          mkdir -p iidx-input-monitor-windows
+          cp ./src-tauri/target/release/iidxim.exe ./iidx-input-monitor-windows/
+          # Create zip file
+          7z a -tzip iidx-input-monitor-windows.zip ./iidx-input-monitor-windows/*
+          
+      - name: Upload Windows zip
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: bc-windows-installer
-          path: ./src-tauri/target/release/bundle/nsis/*-setup.exe
-
-      - name: Upload Windows raw exe
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bc-windows-exe
-          path: ./src-tauri/target/release/bc.exe
+          name: iidx-input-monitor-windows-zip
+          path: ./iidx-input-monitor-windows.zip
 
       - name: List macOS build outputs
         if: matrix.os == 'macos-latest'
@@ -116,7 +118,7 @@ jobs:
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: bc-macos
+          name: iidx-input-monitor-macos
           path: ./src-tauri/target/release/bundle/dmg/*.dmg
 
   create-release:
@@ -185,43 +187,30 @@ jobs:
           ls -la
           echo "=== Artifacts directory contents ==="
           ls -la ./artifacts/ || echo "artifacts directory not found"
-          echo "=== bc-windows-installer contents ==="
-          ls -la ./artifacts/bc-windows-installer/ || echo "bc-windows-installer directory not found"
-          echo "=== bc-windows-exe contents ==="
-          ls -la ./artifacts/bc-windows-exe/ || echo "bc-windows-exe directory not found"
-          echo "=== bc-macos contents ==="
-          ls -la ./artifacts/bc-macos/ || echo "bc-macos directory not found"
+          echo "=== iidx-input-monitor-windows-zip contents ==="
+          ls -la ./artifacts/iidx-input-monitor-windows-zip/ || echo "iidx-input-monitor-windows-zip directory not found"
+          echo "=== iidx-input-monitor-macos contents ==="
+          ls -la ./artifacts/iidx-input-monitor-macos/ || echo "iidx-input-monitor-macos directory not found"
           
-          # Rename Windows NSIS installer
-          WINDOWS_INSTALLER=$(find ./artifacts/bc-windows-installer -name "*-setup.exe" -type f 2>/dev/null | head -1)
-          if [ -n "$WINDOWS_INSTALLER" ]; then
-            mv "$WINDOWS_INSTALLER" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe
-            echo "Windows installer renamed successfully from $WINDOWS_INSTALLER"
+          # Rename Windows zip
+          WINDOWS_ZIP=$(find ./artifacts/iidx-input-monitor-windows-zip -name "iidx-input-monitor-windows.zip" -type f 2>/dev/null | head -1)
+          if [ -n "$WINDOWS_ZIP" ]; then
+            mv "$WINDOWS_ZIP" ./iidx-input-monitor-v${{ steps.package-version.outputs.VERSION }}-windows-x64.zip
+            echo "Windows zip renamed successfully from $WINDOWS_ZIP"
           else
-            echo "Error: Windows installer not found"
-            echo "Searching for setup.exe files..."
-            find ./artifacts -name "*-setup.exe" -type f 2>/dev/null || echo "No setup.exe files found"
-          fi
-          
-          # Rename Windows raw exe
-          WINDOWS_EXE=$(find ./artifacts/bc-windows-exe -name "bc.exe" -type f 2>/dev/null | head -1)
-          if [ -n "$WINDOWS_EXE" ]; then
-            mv "$WINDOWS_EXE" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe
-            echo "Windows exe renamed successfully from $WINDOWS_EXE"
-          else
-            echo "Warning: Windows raw exe not found"
-            echo "All exe files in artifacts:"
-            find ./artifacts -name "*.exe" -type f 2>/dev/null || echo "No exe files found"
+            echo "Warning: Windows zip not found"
+            echo "All zip files in artifacts:"
+            find ./artifacts -name "*.zip" -type f 2>/dev/null || echo "No zip files found"
           fi
           
           # Find and rename macOS DMG
-          DMG_FILE=$(find ./artifacts/bc-macos -name "*.dmg" -type f 2>/dev/null | head -1)
+          DMG_FILE=$(find ./artifacts/iidx-input-monitor-macos -name "*.dmg" -type f 2>/dev/null | head -1)
           if [ -n "$DMG_FILE" ]; then
             echo "Found DMG: $DMG_FILE"
-            mv "$DMG_FILE" ./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
+            mv "$DMG_FILE" ./iidx-input-monitor-v${{ steps.package-version.outputs.VERSION }}-macos.dmg
             echo "macOS artifact renamed successfully"
           else
-            echo "Warning: No DMG file found in bc-macos directory"
+            echo "Warning: No DMG file found in iidx-input-monitor-macos directory"
             echo "Searching for DMG files..."
             find ./artifacts -name "*.dmg" -type f 2>/dev/null || echo "No DMG files found anywhere"
           fi
@@ -231,35 +220,26 @@ jobs:
         run: |
           # List files in current directory to debug
           echo "=== Files in current directory ==="
-          ls -la *.exe *.dmg 2>/dev/null || echo "No exe or dmg files in current directory"
+          ls -la *.zip *.dmg 2>/dev/null || echo "No zip or dmg files in current directory"
           
           # Build artifact list
           ARTIFACTS=""
           
-          # Add Windows installer if it exists
-          WINDOWS_INSTALLER="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe"
-          if [ -f "$WINDOWS_INSTALLER" ]; then
-            ARTIFACTS="$WINDOWS_INSTALLER"
-            echo "Found Windows installer: $WINDOWS_INSTALLER"
-          else
-            echo "Warning: Windows installer not found at $WINDOWS_INSTALLER"
-          fi
-          
-          # Add Windows raw exe if it exists
-          WINDOWS_EXE="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe"
-          if [ -f "$WINDOWS_EXE" ]; then
+          # Add Windows zip if it exists
+          WINDOWS_ZIP="./iidx-input-monitor-v${{ steps.package-version.outputs.VERSION }}-windows-x64.zip"
+          if [ -f "$WINDOWS_ZIP" ]; then
             if [ -n "$ARTIFACTS" ]; then
-              ARTIFACTS="$ARTIFACTS,$WINDOWS_EXE"
+              ARTIFACTS="$ARTIFACTS,$WINDOWS_ZIP"
             else
-              ARTIFACTS="$WINDOWS_EXE"
+              ARTIFACTS="$WINDOWS_ZIP"
             fi
-            echo "Found Windows exe: $WINDOWS_EXE"
+            echo "Found Windows zip: $WINDOWS_ZIP"
           else
-            echo "Warning: Windows exe not found at $WINDOWS_EXE"
+            echo "Warning: Windows zip not found at $WINDOWS_ZIP"
           fi
           
           # Add macOS artifact if it exists
-          MACOS_DMG="./bc-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
+          MACOS_DMG="./iidx-input-monitor-v${{ steps.package-version.outputs.VERSION }}-macos.dmg"
           if [ -f "$MACOS_DMG" ]; then
             if [ -n "$ARTIFACTS" ]; then
               ARTIFACTS="$ARTIFACTS,$MACOS_DMG"
@@ -275,8 +255,7 @@ jobs:
           if [ -z "$ARTIFACTS" ]; then
             echo "Error: No artifacts found to upload"
             echo "Expected artifacts:"
-            echo "  - $WINDOWS_INSTALLER"
-            echo "  - $WINDOWS_EXE"
+            echo "  - $WINDOWS_ZIP"
             echo "  - $MACOS_DMG"
             exit 1
           fi
@@ -290,7 +269,7 @@ jobs:
           artifacts: ${{ steps.artifacts.outputs.ARTIFACTS }}
           artifactErrorsFailBuild: true
           tag: v${{ steps.package-version.outputs.VERSION }}
-          name: BC App v${{ steps.package-version.outputs.VERSION }}
+          name: IIDX Input Monitor v${{ steps.package-version.outputs.VERSION }}
           body: ${{ steps.pr-body.outputs.PR_BODY }}
           allowUpdates: true
           skipIfReleaseExists: true

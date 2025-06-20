@@ -42,6 +42,8 @@ export interface ScratchStatus {
 export interface Record {
   /** リリース時間の配列(最大2000件) */
   releaseTimes: number[];
+  /** 各鍵盤ごとのリリース時間の配列(最大2000件/鍵盤) */
+  keyReleaseTimes: number[][];
   /** 打鍵時刻の配列(最大500件、UNIX時間) */
   pressedTimes: number[];
   /** スクラッチ回転時刻の配列(最大500件、UNIX時間) */

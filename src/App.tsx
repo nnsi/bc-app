@@ -22,8 +22,11 @@ import "@fontsource/noto-sans"
 function App() {
   // 接続設定
   const [ipAddress, setIpAddress] = useState<string>(WEBSOCKET.DEFAULT_IP);
-  // プレイヤーサイド (1P: false, 2P: true)
-  const [is2P, setIs2P] = useState<boolean>(false);
+  // プレイヤーサイド (1P: false, 2P: true) - localStorageから初期値を取得
+  const [is2P, setIs2P] = useState<boolean>(() => {
+    const saved = localStorage.getItem('playerSide');
+    return saved === '2P';
+  });
   
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
@@ -47,6 +50,11 @@ function App() {
 
   // 表示するステータスを決定（受信モード時は受信データ、それ以外はローカルデータ）
   const status = isReceiveMode ? receivedData : controllerStatus;
+
+  // プレイヤーサイドの変更をlocalStorageに保存
+  useEffect(() => {
+    localStorage.setItem('playerSide', is2P ? '2P' : '1P');
+  }, [is2P]);
 
   // コントローラーデータを送信（データが変更された時のみ）
   const prevControllerStatusRef = useRef<ControllerStatus | null>(null);
