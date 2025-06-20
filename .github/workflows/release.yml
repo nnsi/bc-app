@@ -92,19 +92,21 @@ jobs:
           fi
           echo "Build successful: bc found"
 
-      - name: Upload Windows NSIS installer
+      - name: Create Windows zip
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Create a directory for the Windows build
+          mkdir -p bc-windows
+          cp ./src-tauri/target/release/bc.exe ./bc-windows/
+          # Create zip file
+          7z a -tzip bc-windows.zip ./bc-windows/*
+          
+      - name: Upload Windows zip
         if: matrix.os == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: bc-windows-installer
-          path: ./src-tauri/target/release/bundle/nsis/*-setup.exe
-
-      - name: Upload Windows raw exe
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: bc-windows-exe
-          path: ./src-tauri/target/release/bc.exe
+          name: bc-windows-zip
+          path: ./bc-windows.zip
 
       - name: List macOS build outputs
         if: matrix.os == 'macos-latest'
@@ -185,33 +187,20 @@ jobs:
           ls -la
           echo "=== Artifacts directory contents ==="
           ls -la ./artifacts/ || echo "artifacts directory not found"
-          echo "=== bc-windows-installer contents ==="
-          ls -la ./artifacts/bc-windows-installer/ || echo "bc-windows-installer directory not found"
-          echo "=== bc-windows-exe contents ==="
-          ls -la ./artifacts/bc-windows-exe/ || echo "bc-windows-exe directory not found"
+          echo "=== bc-windows-zip contents ==="
+          ls -la ./artifacts/bc-windows-zip/ || echo "bc-windows-zip directory not found"
           echo "=== bc-macos contents ==="
           ls -la ./artifacts/bc-macos/ || echo "bc-macos directory not found"
           
-          # Rename Windows NSIS installer
-          WINDOWS_INSTALLER=$(find ./artifacts/bc-windows-installer -name "*-setup.exe" -type f 2>/dev/null | head -1)
-          if [ -n "$WINDOWS_INSTALLER" ]; then
-            mv "$WINDOWS_INSTALLER" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe
-            echo "Windows installer renamed successfully from $WINDOWS_INSTALLER"
+          # Rename Windows zip
+          WINDOWS_ZIP=$(find ./artifacts/bc-windows-zip -name "bc-windows.zip" -type f 2>/dev/null | head -1)
+          if [ -n "$WINDOWS_ZIP" ]; then
+            mv "$WINDOWS_ZIP" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.zip
+            echo "Windows zip renamed successfully from $WINDOWS_ZIP"
           else
-            echo "Error: Windows installer not found"
-            echo "Searching for setup.exe files..."
-            find ./artifacts -name "*-setup.exe" -type f 2>/dev/null || echo "No setup.exe files found"
-          fi
-          
-          # Rename Windows raw exe
-          WINDOWS_EXE=$(find ./artifacts/bc-windows-exe -name "bc.exe" -type f 2>/dev/null | head -1)
-          if [ -n "$WINDOWS_EXE" ]; then
-            mv "$WINDOWS_EXE" ./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe
-            echo "Windows exe renamed successfully from $WINDOWS_EXE"
-          else
-            echo "Warning: Windows raw exe not found"
-            echo "All exe files in artifacts:"
-            find ./artifacts -name "*.exe" -type f 2>/dev/null || echo "No exe files found"
+            echo "Warning: Windows zip not found"
+            echo "All zip files in artifacts:"
+            find ./artifacts -name "*.zip" -type f 2>/dev/null || echo "No zip files found"
           fi
           
           # Find and rename macOS DMG
@@ -231,31 +220,22 @@ jobs:
         run: |
           # List files in current directory to debug
           echo "=== Files in current directory ==="
-          ls -la *.exe *.dmg 2>/dev/null || echo "No exe or dmg files in current directory"
+          ls -la *.zip *.dmg 2>/dev/null || echo "No zip or dmg files in current directory"
           
           # Build artifact list
           ARTIFACTS=""
           
-          # Add Windows installer if it exists
-          WINDOWS_INSTALLER="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64-setup.exe"
-          if [ -f "$WINDOWS_INSTALLER" ]; then
-            ARTIFACTS="$WINDOWS_INSTALLER"
-            echo "Found Windows installer: $WINDOWS_INSTALLER"
-          else
-            echo "Warning: Windows installer not found at $WINDOWS_INSTALLER"
-          fi
-          
-          # Add Windows raw exe if it exists
-          WINDOWS_EXE="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.exe"
-          if [ -f "$WINDOWS_EXE" ]; then
+          # Add Windows zip if it exists
+          WINDOWS_ZIP="./bc-v${{ steps.package-version.outputs.VERSION }}-windows-x64.zip"
+          if [ -f "$WINDOWS_ZIP" ]; then
             if [ -n "$ARTIFACTS" ]; then
-              ARTIFACTS="$ARTIFACTS,$WINDOWS_EXE"
+              ARTIFACTS="$ARTIFACTS,$WINDOWS_ZIP"
             else
-              ARTIFACTS="$WINDOWS_EXE"
+              ARTIFACTS="$WINDOWS_ZIP"
             fi
-            echo "Found Windows exe: $WINDOWS_EXE"
+            echo "Found Windows zip: $WINDOWS_ZIP"
           else
-            echo "Warning: Windows exe not found at $WINDOWS_EXE"
+            echo "Warning: Windows zip not found at $WINDOWS_ZIP"
           fi
           
           # Add macOS artifact if it exists
@@ -275,8 +255,7 @@ jobs:
           if [ -z "$ARTIFACTS" ]; then
             echo "Error: No artifacts found to upload"
             echo "Expected artifacts:"
-            echo "  - $WINDOWS_INSTALLER"
-            echo "  - $WINDOWS_EXE"
+            echo "  - $WINDOWS_ZIP"
             echo "  - $MACOS_DMG"
             exit 1
           fi
