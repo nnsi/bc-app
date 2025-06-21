@@ -129,6 +129,14 @@ function App() {
     localStorage.setItem('playerSide', is2P ? '2P' : '1P');
   }, [is2P]);
 
+  // プレイモード変更時にSPモードに切り替わったらゲームパッドをリセット
+  useEffect(() => {
+    if (settings.playMode.mode === 'SP') {
+      // DPモードからSPモードに切り替わった時にゲームパッドの自動検出をリセット
+      resetGamepad();
+    }
+  }, [settings.playMode.mode, resetGamepad]);
+
   // コントローラーデータを送信（データが変更された時のみ）
   const prevControllerStatusRef = useRef<ControllerStatus | null>(null);
   const prevDPControllerStatusRef = useRef<DPControllerStatus | null>(null);
