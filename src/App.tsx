@@ -17,6 +17,7 @@ import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
 import { IIDXControllerDP } from "./components/IIDXControllerDP";
 import { BeatStatusDP } from "./components/BeatStatusDP";
 import { DPGamepadSelector } from "./components/DPGamepadSelector";
+import { hasSPControllerChanged, hasDPControllerChanged } from "./utils/controllerCompare";
 
 
 /**
@@ -220,22 +221,16 @@ function App() {
   useEffect(() => {
     if (ws && !isReceiveMode) {
       if (settings.playMode.mode === 'SP' && spControllerStatus) {
-        // SPモード - 前回の値と比較（複数の要素で変化を検出）
-        const hasChanged = !prevControllerStatusRef.current || 
-          prevControllerStatusRef.current.record.pressedTimes.length !== spControllerStatus.record.pressedTimes.length ||
-          prevControllerStatusRef.current.record.releaseTimes.length !== spControllerStatus.record.releaseTimes.length ||
-          prevControllerStatusRef.current.scratch.count !== spControllerStatus.scratch.count ||
-          // キーの状態変化も検出
-          prevControllerStatusRef.current.keys.some((key, i) => key.isPressed !== spControllerStatus.keys[i].isPressed);
+        // SPモード - ユーティリティ関数を使用して変化を検出
+        const hasChanged = hasSPControllerChanged(prevControllerStatusRef.current, spControllerStatus);
         
         if (hasChanged) {
           sendSP(spControllerStatus);
           prevControllerStatusRef.current = spControllerStatus;
         }
       } else if (settings.playMode.mode === 'DP' && dpControllerStatus) {
-        // DPモード - 簡易的な比較（timestampで判定）
-        const hasChanged = !prevDPControllerStatusRef.current || 
-          prevDPControllerStatusRef.current.timestamp !== dpControllerStatus.timestamp;
+        // DPモード - 詳細な変更検出
+        const hasChanged = hasDPControllerChanged(prevDPControllerStatusRef.current, dpControllerStatus);
         
         if (hasChanged) {
           sendDP(dpControllerStatus);
