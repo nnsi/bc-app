@@ -43,7 +43,7 @@ const AppHeaderComponent: React.FC<AppHeaderProps> = ({
       data-tauri-drag-region 
       className="border-b border-white px-[5px] pt-[5px] pb-0 text-[10px] leading-none cursor-default flex items-center"
     >
-      <span className="ml-0 text-[12px] text-gray-400">
+      <span className="ml-0 text-[12px] text-gray-400 pointer-events-none select-none">
         [{isServerMode ? 'Server' : 'Client'}] 
         {isServerMode && localIp && (
           <span className="ml-[5px] opacity-80">
