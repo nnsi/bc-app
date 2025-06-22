@@ -2,12 +2,12 @@
  * WebSocket関連の型定義
  */
 
-import { ControllerStatus, DPControllerStatus, PlayMode } from './controller';
+import { ControllerStatus, DPControllerStatus } from './controller';
 
 /**
  * シングルプレイ時のWebSocketメッセージ
  */
-interface SPWebSocketMessage extends ControllerStatus {
+export interface SPWebSocketMessage extends ControllerStatus {
   mode: 'SP';
 }
 

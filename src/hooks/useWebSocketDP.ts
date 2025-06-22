@@ -4,7 +4,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { WebSocketState, WebSocketError, WEBSOCKET_DEFAULTS, WebSocketMessage, SPWebSocketMessage } from '../types/websocket';
-import { ControllerStatus, DPControllerStatus, PlayMode } from '../types/controller';
+import { ControllerStatus, DPControllerStatus } from '../types/controller';
 import { APP } from '../constants/app';
 
 interface UseWebSocketDPProps {

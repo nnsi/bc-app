@@ -6,14 +6,11 @@ import { ControllerDisplay } from "./components/ControllerDisplay";
 import { ErrorMessage } from "./components/ErrorMessage";
 import type { ControllerStatus, DPControllerStatus } from "./types/controller";
 import { WEBSOCKET } from "./constants/app";
-import { useWebSocket } from "./hooks/useWebSocket";
 import { useGamepadDetection } from "./hooks/useGamepadDetection";
 import { useTauriWindow } from "./hooks/useTauriWindow";
 import { useAppMode } from "./hooks/useAppMode";
-import { compareControllerStatus } from "./utils/compareControllerStatus";
 import { useSettings } from "./hooks/useSettings";
 import { useDPController } from "./hooks/useDPController";
-import { useMultiGamepadDetection } from "./hooks/useMultiGamepadDetection";
 import { useWindowResize } from "./hooks/useWindowResize";
 import { useWebSocketDP } from "./hooks/useWebSocketDP";
 import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
@@ -60,11 +57,28 @@ function App() {
   // ウィンドウリサイズ
   useWindowResize({ playMode: settings.playMode.mode });
   
-  // 複数ゲームパッド検出
-  const { gamepads, isGamepadAvailable } = useMultiGamepadDetection({
-    enabled: true,
-    maxGamepads: 2,
-  });
+  // ゲームパッド情報を取得（DPモードの割り当て画面用）
+  const [gamepads, setGamepads] = useState<Array<{ index: number; id: string }>>([]);
+  
+  // 利用可能なゲームパッドを定期的にチェック
+  useEffect(() => {
+    const checkGamepads = async () => {
+      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) {
+        try {
+          const gamepadModule = await import('tauri-plugin-gamepad-api');
+          const currentGamepads = [...gamepadModule.getGamepads()].filter(Boolean);
+          const gamepadInfos = currentGamepads.map((gp: any) => ({ index: gp.index, id: gp.id }));
+          setGamepads(gamepadInfos);
+        } catch (err) {
+          console.error('Failed to get gamepads:', err);
+        }
+      }
+    };
+    
+    checkGamepads();
+    const interval = setInterval(checkGamepads, 500);
+    return () => clearInterval(interval);
+  }, []);
   
   // DPモード用ゲームパッド割り当て
   const { 
@@ -137,8 +151,6 @@ function App() {
     }
   }, [settings.playMode.mode]);
   
-  // SPモード用の旧互換性
-  const controllerStatus = spControllerStatus;
 
   // 表示するステータスを決定
   const displayStatus = (() => {
@@ -191,11 +203,10 @@ function App() {
   useEffect(() => {
     if (ws && !isReceiveMode) {
       if (settings.playMode.mode === 'SP' && spControllerStatus) {
-        // SPモード
-        const hasChanged = !compareControllerStatus(
-          prevControllerStatusRef.current,
-          spControllerStatus
-        );
+        // SPモード - 前回の値と比較（pressedTimesで変化を検出）
+        const hasChanged = !prevControllerStatusRef.current || 
+          prevControllerStatusRef.current.record.pressedTimes.length !== spControllerStatus.record.pressedTimes.length ||
+          prevControllerStatusRef.current.scratch.count !== spControllerStatus.scratch.count;
         
         if (hasChanged) {
           sendSP(spControllerStatus);
@@ -324,7 +335,7 @@ function App() {
         {displayStatus && (
           <>
             {/* SPモードまたは旧ControllerStatus形式 */}
-            {(!('mode' in displayStatus) || (displayStatus.mode === 'SP')) && (
+            {!('mode' in displayStatus) && (
               <>
                 <ControllerDisplay 
                   status={displayStatus as ControllerStatus} 
@@ -335,7 +346,7 @@ function App() {
             )}
             
             {/* DPモード */}
-            {displayStatus && 'mode' in displayStatus && displayStatus.mode === 'DP' && (
+            {'mode' in displayStatus && displayStatus.mode === 'DP' && (
               <>
                 <IIDXControllerDP
                   player1Status={displayStatus.player1}

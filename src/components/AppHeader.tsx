@@ -6,7 +6,6 @@ import React, { memo } from 'react';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { HEADER_STYLES } from '../constants/styles';
-import { APP } from '../constants/app';
 import { useLocalIp } from '../hooks/useLocalIp';
 import { PlayMode } from '../types/controller';
 import styled from 'styled-components';

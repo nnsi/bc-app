@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { AppSettings, DEFAULT_SETTINGS, STORAGE_KEYS, PlayModeSettings } from '../types/settings';
+import { AppSettings, DEFAULT_SETTINGS, STORAGE_KEYS } from '../types/settings';
 import { PlayMode } from '../types/controller';
 
 /**

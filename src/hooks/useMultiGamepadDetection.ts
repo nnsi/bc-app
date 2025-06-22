@@ -92,7 +92,7 @@ export function useMultiGamepadDetection({
     if (!getGamepads) return;
 
     try {
-      const currentGamepads = [...getGamepads()].filter(Boolean) as IGamepad[];
+      const currentGamepads = [...getGamepads()].filter(Boolean) as unknown as IGamepad[];
       
       const gamepadInfos: GamepadInfo[] = currentGamepads
         .slice(0, maxGamepads)
@@ -135,7 +135,8 @@ export function useMultiGamepadDetection({
     updateGamepads();
 
     // 定期更新
-    intervalRef.current = setInterval(updateGamepads, interval);
+    const intervalId = setInterval(updateGamepads, interval);
+    intervalRef.current = intervalId;
 
     return () => {
       if (intervalRef.current) {

@@ -3,7 +3,6 @@
  */
 
 import React, { memo } from 'react';
-import { TEXT_STYLES } from '../constants/styles';
 import styled from 'styled-components';
 
 const Container = styled.div`
@@ -61,8 +60,7 @@ interface DPGamepadSelectorProps {
  */
 const DPGamepadSelectorComponent: React.FC<DPGamepadSelectorProps> = ({ 
   error, 
-  assignments,
-  isAssigning 
+  assignments
 }) => {
   const getMessage = () => {
     if (error) return error;
@@ -104,7 +102,7 @@ const DPGamepadSelectorComponent: React.FC<DPGamepadSelectorProps> = ({
       )}
       
       {error && (
-        <p style={{ ...TEXT_STYLES.CENTER, color: '#ff6b6b', fontSize: '12px', marginTop: '10px' }}>
+        <p style={{ textAlign: 'center', color: '#ff6b6b', fontSize: '12px', marginTop: '10px' }}>
           {error}
         </p>
       )}
