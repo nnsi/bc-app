@@ -1,7 +1,4 @@
 * {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
   font-size: 14px;
 }
 :root {
@@ -13,4 +10,92 @@
 .container {
   padding: 5px;
   margin-top: 1rem;
+}
+
+/* Scratch animations */
+.scratch-up {
+  background: #666;
+  transform: scale(0.98);
+  position: relative;
+  overflow: hidden;
+}
+
+.scratch-up::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: #ccffff;
+  border-left-color: #ccffff;
+  border-right-color: #ccffff;
+  clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+}
+
+
+.scratch-down {
+  background: #666;
+  transform: scale(0.98);
+  position: relative;
+  overflow: hidden;
+}
+
+.scratch-down::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-bottom-color: #ccffff;
+  border-left-color: #ccffff;
+  border-right-color: #ccffff;
+  clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+}
+
+/* Button animations */
+.button-pressed {
+  background: #ccffff !important;
+  transform: scale(0.95);
+  border-color: #ccffff !important;
+  box-shadow: 
+    0 0 20px 2px rgba(204, 255, 255, 0.8),
+    0 0 40px 4px rgba(204, 255, 255, 0.4),
+    inset 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.button-pressed::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition: width 0.2s, height 0.2s;
+}
+
+/* Keys container layout */
+.keys-container {
+  display: flex;
+  gap: 20px;
+}
+
+.keys-container > div:nth-child(odd) {
+  margin-top: 85px;
+  margin-left: -30px;
+}
+
+.keys-container > div:nth-child(even) {
+  margin-left: -30px;
+}
+
+.keys-container > div:first-child {
+  margin-left: 0;
 }

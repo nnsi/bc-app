@@ -23,17 +23,21 @@ const ConnectionSettingsComponent: React.FC<ConnectionSettingsProps> = ({
   onReceiveModeClick,
 }) => {
   return (
-    <p>
+    <div className="flex gap-2">
       <input
         type="text"
         placeholder="接続先"
         value={ipAddress}
         onChange={(e) => onIpAddressChange(e.target.value)}
+        className="block p-1 bg-[#444] text-white border border-[#666] rounded-md focus:outline-none focus:border-[#4a9eff] focus:ring-1 focus:ring-[#4a9eff] transition-all duration-200 w-[140px] text-[14px]"
       />
-      <button onClick={onReceiveModeClick}>
+      <button 
+        onClick={onReceiveModeClick}
+        className="block p-1 bg-[#4a9eff] text-white rounded-md hover:bg-[#3a8eef] active:scale-95 transition-all duration-200 font-medium text-[14px] shadow-sm hover:shadow-md"
+      >
         受信モード
       </button>
-    </p>
+    </div>
   );
 };
 

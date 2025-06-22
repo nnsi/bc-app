@@ -17,7 +17,6 @@ import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
 import { IIDXControllerDP } from "./components/IIDXControllerDP";
 import { BeatStatusDP } from "./components/BeatStatusDP";
 import { DPGamepadSelector } from "./components/DPGamepadSelector";
-import "@fontsource/noto-sans"
 
 
 /**
@@ -190,11 +189,17 @@ function App() {
         // SPモードからDPモードに切り替わった時
         // SPモードのコントローラー状態をクリア
         resetCount();
+        // SPモードのゲームパッド選択をリセット
+        resetGamepad();
+        // DPモードのゲームパッド割り当てをリセット
+        resetDPGamepadMapping();
+        // 自動割り当てを開始
+        startAutoAssignment();
       }
       
       prevModeRef.current = settings.playMode.mode;
     }
-  }, [settings.playMode.mode, resetGamepad, isAutoAssigning, cancelAssignment, resetCount]);
+  }, [settings.playMode.mode, resetGamepad, isAutoAssigning, cancelAssignment, resetCount, resetDPGamepadMapping, startAutoAssignment]);
 
   // コントローラーデータを送信（データが変更された時のみ）
   const prevControllerStatusRef = useRef<ControllerStatus | null>(null);
@@ -257,7 +262,7 @@ function App() {
   }, [connectWebSocket, setReceiveMode]);
   
   return (
-    <div style={{ fontFamily: "Noto Sans JP" }}>
+    <div>
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
@@ -280,14 +285,14 @@ function App() {
           <>
             {/* SPモード */}
             {settings.playMode.mode === 'SP' && !spControllerStatus && (
-              <>
+              <div className="flex flex-col gap-4">
                 <GamepadSelector error={gamepadError} />
                 <ConnectionSettings
                   ipAddress={ipAddress}
                   onIpAddressChange={setIpAddress}
                   onReceiveModeClick={handleReceiveModeClick}
                 />
-              </>
+              </div>
             )}
             
             {/* DPモード */}
@@ -321,12 +326,7 @@ function App() {
         
         {/* 受信モードの状態表示 */}
         {isReceiveMode && !displayStatus && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px',
-            color: '#4a9eff',
-            fontSize: '16px'
-          }}>
+          <div className="text-center p-5 text-[#4a9eff] text-[16px]">
             受信モードで待機中...
           </div>
         )}
@@ -354,7 +354,7 @@ function App() {
                   mode="DP"
                   currentPlayerSide="1P"
                 />
-                <div style={{ marginTop: '20px' }}>
+                <div className="mt-5">
                   <BeatStatusDP
                     player1Status={displayStatus.player1}
                     player2Status={displayStatus.player2}

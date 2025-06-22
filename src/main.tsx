@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
+import "./tailwind.css";
 import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { STORAGE_KEYS } from './types/settings';
