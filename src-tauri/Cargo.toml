@@ -1,6 +1,6 @@
 [package]
 name = "iidx-input-monitor"
-version = "0.0.2"
+version = "0.0.3"
 description = "IIDX Input Monitor - Real-time controller input tracking for beatmania IIDX"
 authors = ["you"]
 license = ""
