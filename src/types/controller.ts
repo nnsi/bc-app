@@ -46,15 +46,15 @@ export interface ScratchStatus {
  * 記録データ
  */
 export interface Record {
-  /** リリース時間の配列(最大2000件) */
+  /** リリース時間の配列 */
   releaseTimes: number[];
-  /** 各鍵盤ごとのリリース時間の配列(最大2000件/鍵盤) */
+  /** 各鍵盤ごとのリリース時間の配列 */
   keyReleaseTimes: number[][];
-  /** 打鍵時刻の配列(最大500件、UNIX時間) */
+  /** 打鍵時刻の配列(UNIX時間) */
   pressedTimes: number[];
-  /** スクラッチ回転時刻の配列(最大500件、UNIX時間) */
+  /** スクラッチ回転時刻の配列(UNIX時間) */
   scratchTimes: number[];
-  /** スクラッチ回転距離の配列(最大2000件) */
+  /** スクラッチ回転距離の配列 */
   scratchRotationDistances: number[];
 }
 
@@ -112,6 +112,8 @@ export const CONTROLLER_CONSTANTS = {
   LOOP_MILLI_SECONDS: 5,
   /** 記録するリリース時間の最大数 */
   MAX_RELEASE_TIMES: 2000,
+  /** 各鍵盤ごとに記録するリリース時間の最大数 */
+  MAX_KEY_RELEASE_TIMES: Math.floor(2000 / 6),
   /** 記録する打鍵時刻の最大数 */
   MAX_PRESSED_TIMES: 500,
   /** 記録するスクラッチ時刻の最大数 */
