@@ -249,10 +249,14 @@ export const useDPController = ({
         : newScratchRotationDistances,
     };
 
-    // 配列のサイズ制限
-    record.releaseTimes.length = Math.min(record.releaseTimes.length, CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES);
+    // 配列のサイズ制限（最新のデータを保持）
+    if (record.releaseTimes.length > CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES) {
+      record.releaseTimes = record.releaseTimes.slice(0, CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES);
+    }
     record.keyReleaseTimes = record.keyReleaseTimes.map(times => 
-      times.slice(0, CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES)
+      times.length > CONTROLLER_CONSTANTS.MAX_KEY_RELEASE_TIMES
+        ? times.slice(0, CONTROLLER_CONSTANTS.MAX_KEY_RELEASE_TIMES)
+        : times
     );
     record.pressedTimes.length = Math.min(record.pressedTimes.length, CONTROLLER_CONSTANTS.MAX_PRESSED_TIMES);
     record.scratchTimes.length = Math.min(record.scratchTimes.length, CONTROLLER_CONSTANTS.MAX_SCRATCH_TIMES);
