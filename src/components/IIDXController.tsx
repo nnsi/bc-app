@@ -13,7 +13,7 @@ const Scratch: React.FC<{
   <div
     className={`
       w-[100px] h-[100px] rounded-[50px] text-[0px]
-      transition-all duration-[50ms] ease-out relative overflow-hidden
+      relative overflow-hidden
       ${state === 0 ? 'bg-[#666] border-2 border-[#333]' : ''}
       ${state === 1 ? 'scratch-up' : ''}
       ${state === -1 ? 'scratch-down' : ''}
@@ -23,9 +23,9 @@ const Scratch: React.FC<{
     {rotationAverage !== undefined && rotationAverage > 0 && (
       <span className={`
         absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
-        text-[20px] font-bold z-10
-        ${state !== 0 ? 'text-[#333]' : 'text-white'}
-        [text-shadow:1px_1px_2px_rgba(0,0,0,0.5)]
+        text-[20px] font-bold z-20
+        text-white
+        [text-shadow:2px_2px_4px_rgba(0,0,0,0.8)]
       `}>
         {Math.round(rotationAverage)}
       </span>
