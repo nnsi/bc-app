@@ -18,7 +18,7 @@
   },
   "productName": "IIDX Input Monitor",
   "mainBinaryName": "iidxim",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "identifier": "nsi.dev",
   "plugins": {},
   "app": {
