@@ -88,10 +88,10 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
     const stats = player1Status ? player1Stats : player2Stats;
     return (
       <div className="mt-0 text-white text-left">
-        <p className="my-1 text-sm text-left">
+        <p className="my-1 text-sm text-left" style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
           {stats.releaseAverage.toString().padStart(2, '0')} ms | {stats.density.toString().padStart(2, '0')} / s
         </p>
-        <p className="my-1 text-sm text-left">Total: {stats.count}</p>
+        <p className="my-1 text-sm text-left" style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>Total: {stats.count}</p>
       </div>
     );
   }
@@ -99,10 +99,10 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
   // DPモードは統合統計のみ表示
   return (
     <div className="text-white text-left absolute left-2 bottom-2">
-      <p className="my-1 text-sm text-left">
+      <p className="my-1 text-sm text-left" style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
         {combinedStats.releaseAverage.toString().padStart(2, '0')} ms | {combinedStats.density.toString().padStart(2, '0')} / s
       </p>
-      <p className="my-1 text-sm text-left">
+      <p className="my-1 text-sm text-left" style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
         Total: {combinedStats.count}
       </p>
     </div>

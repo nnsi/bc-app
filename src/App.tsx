@@ -32,6 +32,11 @@ function App() {
     const saved = localStorage.getItem('playerSide');
     return saved === '2P';
   });
+  // 透過状態 - localStorageから初期値を取得
+  const [isTransparent, setIsTransparent] = useState<boolean>(() => {
+    const saved = localStorage.getItem('isTransparent');
+    return saved !== 'false'; // デフォルトは透過（true）
+  });
   
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
@@ -181,6 +186,16 @@ function App() {
   useEffect(() => {
     localStorage.setItem('playerSide', is2P ? '2P' : '1P');
   }, [is2P]);
+  
+  // 透過状態の変更をlocalStorageに保存とbodyクラスの更新
+  useEffect(() => {
+    localStorage.setItem('isTransparent', String(isTransparent));
+    if (isTransparent) {
+      document.body.classList.remove('non-transparent');
+    } else {
+      document.body.classList.add('non-transparent');
+    }
+  }, [isTransparent]);
 
   // プレイモード変更時の処理
   const prevModeRef = useRef(settings.playMode.mode);
@@ -271,13 +286,15 @@ function App() {
   }, [connectWebSocket, setReceiveMode]);
   
   return (
-    <div className="min-h-screen bg-neutral-700 text-white overflow-hidden select-none text-sm">
+    <div className={`min-h-screen text-white overflow-hidden select-none text-sm ${isTransparent ? 'bg-transparent' : 'bg-neutral-700'}`}>
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
         onClose={close}
         currentMode={settings.playMode.mode}
         onModeChange={setPlayMode}
+        isTransparent={isTransparent}
+        onTransparencyChange={setIsTransparent}
       />
       <div className="p-[5px] mt-4">
         {wsError && (
