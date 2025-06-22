@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import useController from "./hooks/useController";
 import { AppHeader } from "./components/AppHeader";
 import { GamepadSelector } from "./components/GamepadSelector";
 import { ConnectionSettings } from "./components/ConnectionSettings";
@@ -90,7 +89,7 @@ function App() {
     },
   });
   
-  // DPモードでコントローラーが未割り当ての場合に自動割り当てを開始
+  // DPモードでコントローラーが未割り当ての場合に自動割り当てを開始（受信モードでは無効）
   useEffect(() => {
     if (settings.playMode.mode === 'DP' && !isReceiveMode && !isAutoAssigning &&
         (settings.playMode.dp1PGamepadIndex === null || settings.playMode.dp2PGamepadIndex === null)) {
@@ -112,22 +111,31 @@ function App() {
     ipAddress,
   });
   
-  // ゲームパッド自動検出（SPモード用）
+  // ゲームパッド自動検出（SPモード用、受信モードでは無効）
   const { selectedGamepadIndex, error: gamepadError, reset: resetGamepad } = useGamepadDetection({
-    enabled: settings.playMode.mode === 'SP',
+    enabled: settings.playMode.mode === 'SP' && !isReceiveMode,
     onDetected: (index) => {
       // SPモードの場合
+      console.log('[App] SP mode gamepad detected:', index);
+      console.log('[App] Current DP assignments - 1P:', settings.playMode.dp1PGamepadIndex, '2P:', settings.playMode.dp2PGamepadIndex);
       if (!ws) connectWebSocket();
     },
   });
   
-  // DP対応コントローラー状態の取得
+  // DP対応コントローラー状態の取得（受信モードでは無効）
   const { spControllerStatus, dpControllerStatus, resetCount } = useDPController({
-    playMode: settings.playMode.mode,
-    spGamepadIndex: selectedGamepadIndex,
-    dp1PGamepadIndex: settings.playMode.dp1PGamepadIndex,
-    dp2PGamepadIndex: settings.playMode.dp2PGamepadIndex,
+    playMode: isReceiveMode ? 'SP' : settings.playMode.mode,
+    spGamepadIndex: isReceiveMode ? -1 : selectedGamepadIndex,
+    dp1PGamepadIndex: isReceiveMode ? null : settings.playMode.dp1PGamepadIndex,
+    dp2PGamepadIndex: isReceiveMode ? null : settings.playMode.dp2PGamepadIndex,
   });
+  
+  // SPモードのデバッグ情報（モード切り替え時のみ）
+  useEffect(() => {
+    if (settings.playMode.mode === 'SP') {
+      console.log('[App] Switched to SP mode - selectedGamepadIndex:', selectedGamepadIndex);
+    }
+  }, [settings.playMode.mode]);
   
   // SPモード用の旧互換性
   const controllerStatus = spControllerStatus;
@@ -150,13 +158,31 @@ function App() {
     localStorage.setItem('playerSide', is2P ? '2P' : '1P');
   }, [is2P]);
 
-  // プレイモード変更時にSPモードに切り替わったらゲームパッドをリセット
+  // プレイモード変更時の処理
+  const prevModeRef = useRef(settings.playMode.mode);
   useEffect(() => {
-    if (settings.playMode.mode === 'SP') {
-      // DPモードからSPモードに切り替わった時にゲームパッドの自動検出をリセット
-      resetGamepad();
+    if (prevModeRef.current !== settings.playMode.mode) {
+      console.log('[App] Mode changed from', prevModeRef.current, 'to', settings.playMode.mode);
+      
+      if (settings.playMode.mode === 'SP') {
+        // DPモードからSPモードに切り替わった時
+        // DPモードの自動割り当てをキャンセル
+        if (isAutoAssigning) {
+          cancelAssignment();
+        }
+        // SPモードのコントローラー状態をリセット
+        resetCount();
+        // SPモードのゲームパッド自動検出をリセット
+        resetGamepad();
+      } else {
+        // SPモードからDPモードに切り替わった時
+        // SPモードのコントローラー状態をクリア
+        resetCount();
+      }
+      
+      prevModeRef.current = settings.playMode.mode;
     }
-  }, [settings.playMode.mode, resetGamepad]);
+  }, [settings.playMode.mode, resetGamepad, isAutoAssigning, cancelAssignment, resetCount]);
 
   // コントローラーデータを送信（データが変更された時のみ）
   const prevControllerStatusRef = useRef<ControllerStatus | null>(null);
@@ -214,6 +240,7 @@ function App() {
   }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment]);
   
   const handleReceiveModeClick = useCallback(() => {
+    console.log('[App] Entering receive mode');
     connectWebSocket();
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
@@ -237,8 +264,8 @@ function App() {
         )}
         
         
-        {/* コントローラー未選択時の画面 */}
-        {!isReceiveMode && (
+        {/* コントローラー未選択時の画面（受信モードでは表示しない） */}
+        {!isReceiveMode && !displayStatus && (
           <>
             {/* SPモード */}
             {settings.playMode.mode === 'SP' && !spControllerStatus && (
@@ -281,16 +308,30 @@ function App() {
           </>
         )}
         
+        {/* 受信モードの状態表示 */}
+        {isReceiveMode && !displayStatus && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '20px',
+            color: '#4a9eff',
+            fontSize: '16px'
+          }}>
+            受信モードで待機中...
+          </div>
+        )}
+        
         {/* コントローラー表示 */}
         {displayStatus && (
           <>
             {/* SPモードまたは旧ControllerStatus形式 */}
-            {(!('mode' in displayStatus)) && (
-              <ControllerDisplay 
-                status={displayStatus as ControllerStatus} 
-                is2P={is2P} 
-                onPlayerSideChange={setIs2P} 
-              />
+            {(!('mode' in displayStatus) || (displayStatus.mode === 'SP')) && (
+              <>
+                <ControllerDisplay 
+                  status={displayStatus as ControllerStatus} 
+                  is2P={is2P} 
+                  onPlayerSideChange={setIs2P} 
+                />
+              </>
             )}
             
             {/* DPモード */}

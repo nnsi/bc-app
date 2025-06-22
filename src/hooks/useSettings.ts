@@ -9,7 +9,7 @@ import { PlayMode } from '../types/controller';
 /**
  * useSettingsフックの戻り値
  */
-export interface UseSettingsReturn {
+interface UseSettingsReturn {
   /** 現在の設定 */
   settings: AppSettings;
   /** プレイモードを変更 */
@@ -54,6 +54,8 @@ export const useSettings = (): UseSettingsReturn => {
 
   // プレイモードを変更
   const setPlayMode = useCallback((mode: PlayMode) => {
+    console.log('[useSettings] setPlayMode called with:', mode);
+    console.log('[useSettings] Current mode:', settings.playMode.mode);
     const newSettings: AppSettings = {
       ...settings,
       playMode: {

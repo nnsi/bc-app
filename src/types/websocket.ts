@@ -7,7 +7,7 @@ import { ControllerStatus, DPControllerStatus, PlayMode } from './controller';
 /**
  * シングルプレイ時のWebSocketメッセージ
  */
-export interface SPWebSocketMessage extends ControllerStatus {
+interface SPWebSocketMessage extends ControllerStatus {
   mode: 'SP';
 }
 
@@ -37,7 +37,7 @@ export enum WebSocketState {
 /**
  * WebSocket設定
  */
-export interface WebSocketConfig {
+interface WebSocketConfig {
   /** 接続先IPアドレス */
   ipAddress: string;
   /** ポート番号 */

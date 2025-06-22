@@ -86,15 +86,15 @@ export function useWebSocketDP({
       return;
     }
 
+    const url = `ws://${ipAddress}:${WEBSOCKET_DEFAULTS.port}${WEBSOCKET_DEFAULTS.path}`;
+    console.log('[WebSocket] Connecting to:', url);
     setState(WebSocketState.CONNECTING);
     setError(null);
 
-    const webSocket = new WebSocket(
-      `ws://${ipAddress}:${WEBSOCKET_DEFAULTS.port}${WEBSOCKET_DEFAULTS.path}`
-    );
+    const webSocket = new WebSocket(url);
 
     webSocket.onopen = () => {
-      if (APP.DEBUG) console.log('WebSocket connected');
+      console.log('[WebSocket] Connected');
       setState(WebSocketState.CONNECTED);
       setError(null);
     };
@@ -103,7 +103,9 @@ export function useWebSocketDP({
       try {
         const text = event.data instanceof Blob ? await event.data.text() : event.data;
         const rawData = JSON.parse(text);
+        if (APP.DEBUG) console.log('WebSocket received raw data:', rawData);
         const parsedData = parseWebSocketMessage(rawData);
+        if (APP.DEBUG) console.log('WebSocket parsed data:', parsedData);
         setReceivedData(parsedData);
       } catch (err) {
         const error: WebSocketError = {
@@ -127,7 +129,7 @@ export function useWebSocketDP({
     };
 
     webSocket.onclose = (event) => {
-      if (APP.DEBUG) console.log('WebSocket closed:', event.code, event.reason);
+      console.log('[WebSocket] Closed:', event.code, event.reason);
       setState(WebSocketState.DISCONNECTED);
       setWs(null);
 
@@ -156,6 +158,7 @@ export function useWebSocketDP({
       setWs(null);
       setState(WebSocketState.DISCONNECTED);
       setError(null);
+      setReceivedData(null); // 受信データをクリア
     }
   }, [ws]);
 
