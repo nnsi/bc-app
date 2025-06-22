@@ -63,6 +63,25 @@ export interface ControllerStatus {
 }
 
 /**
+ * プレイモード（シングルプレイ/ダブルプレイ）
+ */
+export type PlayMode = 'SP' | 'DP';
+
+/**
+ * ダブルプレイ時のコントローラー状態
+ */
+export interface DPControllerStatus {
+  /** プレイモード */
+  mode: 'DP';
+  /** 1P側コントローラー状態 */
+  player1: ControllerStatus | null;
+  /** 2P側コントローラー状態 */
+  player2: ControllerStatus | null;
+  /** タイムスタンプ */
+  timestamp: number;
+}
+
+/**
  * 物理ボタン番号から鍵盤番号へのマッピング
  */
 export const KEY_MAPPING = {

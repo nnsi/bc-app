@@ -18,7 +18,7 @@ const GamepadSelectorComponent: React.FC<GamepadSelectorProps> = ({ error }) => 
   return (
     <>
       <p style={TEXT_STYLES.CENTER}>
-        {error || 'コントローラーのボタンを押してください'}
+        {error || 'コントローラーのボタンを長押ししてください'}
       </p>
       {error && (
         <p style={{ ...TEXT_STYLES.CENTER, color: '#ff6b6b', fontSize: '12px' }}>

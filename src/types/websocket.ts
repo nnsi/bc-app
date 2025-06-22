@@ -2,13 +2,23 @@
  * WebSocket関連の型定義
  */
 
-import { ControllerStatus } from './controller';
+import { ControllerStatus, DPControllerStatus } from './controller';
+
+/**
+ * シングルプレイ時のWebSocketメッセージ
+ */
+export interface SPWebSocketMessage extends ControllerStatus {
+  mode: 'SP';
+}
 
 /**
  * WebSocketメッセージの型
- * 現在はControllerStatusをそのまま送信
+ * SPモードとDPモードの両方に対応
  */
-export type WebSocketMessage = ControllerStatus;
+export type WebSocketMessage = 
+  | ControllerStatus // 後方互換性のため
+  | SPWebSocketMessage
+  | DPControllerStatus;
 
 /**
  * WebSocket接続状態
@@ -27,7 +37,7 @@ export enum WebSocketState {
 /**
  * WebSocket設定
  */
-export interface WebSocketConfig {
+interface WebSocketConfig {
   /** 接続先IPアドレス */
   ipAddress: string;
   /** ポート番号 */

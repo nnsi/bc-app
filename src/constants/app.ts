@@ -14,13 +14,6 @@ export const WEBSOCKET = {
   PATH: '/ws',
 } as const;
 
-/**
- * ゲームパッド自動検出の定数
- */
-export const GAMEPAD_DETECTION = {
-  /** 自動検出の間隔（ミリ秒） */
-  INTERVAL: 100,
-} as const;
 
 /**
  * アプリケーションモード
@@ -39,6 +32,11 @@ export const UI = {
   /** ウィンドウサイズ */
   WINDOW: {
     WIDTH: 410,
+    HEIGHT: 250,
+  },
+  /** DPモードのウィンドウサイズ */
+  WINDOW_DP: {
+    WIDTH: 800,
     HEIGHT: 250,
   },
   /** ヘッダーの高さ（ピクセル） */
