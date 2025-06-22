@@ -163,7 +163,7 @@ function App() {
     // ローカルモード
     return settings.playMode.mode === 'SP' ? spControllerStatus : dpControllerStatus;
   })();
-
+  
   // プレイヤーサイドの変更をlocalStorageに保存
   useEffect(() => {
     localStorage.setItem('playerSide', is2P ? '2P' : '1P');
@@ -208,10 +208,13 @@ function App() {
   useEffect(() => {
     if (ws && !isReceiveMode) {
       if (settings.playMode.mode === 'SP' && spControllerStatus) {
-        // SPモード - 前回の値と比較（pressedTimesで変化を検出）
+        // SPモード - 前回の値と比較（複数の要素で変化を検出）
         const hasChanged = !prevControllerStatusRef.current || 
           prevControllerStatusRef.current.record.pressedTimes.length !== spControllerStatus.record.pressedTimes.length ||
-          prevControllerStatusRef.current.scratch.count !== spControllerStatus.scratch.count;
+          prevControllerStatusRef.current.record.releaseTimes.length !== spControllerStatus.record.releaseTimes.length ||
+          prevControllerStatusRef.current.scratch.count !== spControllerStatus.scratch.count ||
+          // キーの状態変化も検出
+          prevControllerStatusRef.current.keys.some((key, i) => key.isPressed !== spControllerStatus.keys[i].isPressed);
         
         if (hasChanged) {
           sendSP(spControllerStatus);
@@ -253,10 +256,9 @@ function App() {
       // 自動割り当てを再開始
       startAutoAssignment();
     }
-  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment]);
+  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment, isReceiveMode, receivedData]);
   
   const handleReceiveModeClick = useCallback(() => {
-    console.log('[App] Entering receive mode');
     connectWebSocket();
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
@@ -335,7 +337,7 @@ function App() {
         {displayStatus && (
           <>
             {/* SPモードまたは旧ControllerStatus形式 */}
-            {!('mode' in displayStatus) && (
+            {(!('mode' in displayStatus) || (displayStatus.mode !== 'DP')) && (
               <>
                 <ControllerDisplay 
                   status={displayStatus as ControllerStatus} 
