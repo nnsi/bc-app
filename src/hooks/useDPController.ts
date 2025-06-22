@@ -163,18 +163,72 @@ export const useDPController = ({
       newScratchTimes.push(unixTime);
     }
 
+    // スクラッチ回転距離の計算
+    let rotationDistance = 0;
+    if (prevStatus?.scratch.currentAxes !== undefined && pad.axes[1] !== prevStatus.scratch.currentAxes) {
+      // 軸の値の差分を計算（-1から1の範囲）
+      let diff = pad.axes[1] - prevStatus.scratch.currentAxes;
+      
+      // 境界を跨いだ場合の処理（例：0.9から-0.9への移動）
+      if (Math.abs(diff) > 1) {
+        if (diff > 0) {
+          diff = diff - 2;
+        } else {
+          diff = diff + 2;
+        }
+      }
+      
+      rotationDistance = Math.abs(diff);
+      
+    }
+
+    // ストローク距離の計算
+    let strokeDistance = 0;
+    
+    // スクラッチ状態が変化した場合（方向転換または停止）
+    const isStateChanged = prevScratchState && prevScratchState.state !== scratchStateType;
+    
+    if (scratchStateType !== 0) {
+      if (!isStateChanged && prevStatus?.scratch.strokeDistance) {
+        // 同じ方向への回転が継続中は累積距離を加算
+        strokeDistance = prevStatus.scratch.strokeDistance + rotationDistance;
+      } else {
+        // 新しいストロークの開始
+        strokeDistance = rotationDistance;
+      }
+    }
+    
     const scratchStatus: ScratchStatus = {
       currentAxes: pad.axes[1],
       previousAxes: prevStatus?.scratch.currentAxes,
       fixedStateTime: fixedStateScratchTime,
       state: scratchStateType,
       count: scratchCount,
+      rotationDistance: rotationDistance,
+      rotationTime: unixTime,
+      strokeDistance: strokeDistance,
     };
 
     const filteredReleaseTimes = newReleaseTimes.filter((time) => time < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD);
     const filteredKeyReleaseTimes = newKeyReleaseTimes.map(times => 
       times.filter(time => time < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD)
     );
+
+    // スクラッチ回転距離の記録（ストローク単位）
+    const newScratchRotationDistances: number[] = [];
+    
+    // スクラッチ状態が変化した場合（方向転換または停止）、前回のストローク距離を記録
+    if (isStateChanged && prevScratchState && prevScratchState.strokeDistance > 0) {
+      // 一周を100とするため、移動距離を正規化
+      // 実測値: 一周で累積距離約2.31なので、100/2.31≈43.3
+      const normalizedStrokeDistance = prevScratchState.strokeDistance * 43.3;
+      
+      // 前回の記録から200ms以内の場合のみ記録
+      const elapsedTime = unixTime - prevScratchState.rotationTime;
+      if (elapsedTime < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD) {
+        newScratchRotationDistances.push(normalizedStrokeDistance);
+      }
+    }
 
     const record: Record = {
       releaseTimes: prevStatus
@@ -190,6 +244,9 @@ export const useDPController = ({
       scratchTimes: prevStatus
         ? [...newScratchTimes, ...(prevStatus.record.scratchTimes || [])]
         : newScratchTimes,
+      scratchRotationDistances: prevStatus
+        ? [...newScratchRotationDistances, ...prevStatus.record.scratchRotationDistances]
+        : newScratchRotationDistances,
     };
 
     // 配列のサイズ制限
@@ -199,6 +256,10 @@ export const useDPController = ({
     );
     record.pressedTimes.length = Math.min(record.pressedTimes.length, CONTROLLER_CONSTANTS.MAX_PRESSED_TIMES);
     record.scratchTimes.length = Math.min(record.scratchTimes.length, CONTROLLER_CONSTANTS.MAX_SCRATCH_TIMES);
+    // スクラッチ回転距離は最新1件のみ保持
+    if (record.scratchRotationDistances.length > 1) {
+      record.scratchRotationDistances = record.scratchRotationDistances.slice(0, 1);
+    }
 
     return {
       keys: keyStatus,

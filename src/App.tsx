@@ -262,7 +262,7 @@ function App() {
   }, [connectWebSocket, setReceiveMode]);
   
   return (
-    <div>
+    <div className="min-h-screen bg-neutral-700 text-white overflow-hidden select-none text-sm">
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
@@ -270,7 +270,7 @@ function App() {
         currentMode={settings.playMode.mode}
         onModeChange={setPlayMode}
       />
-      <div className="container">
+      <div className="p-[5px] mt-4">
         {wsError && (
           <ErrorMessage
             message={wsError.message}

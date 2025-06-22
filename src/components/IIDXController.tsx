@@ -1,9 +1,14 @@
 import React from "react";
 import { ControllerStatus } from "../types/controller";
 
-const Scratch: React.FC<{ state: number; style?: React.CSSProperties }> = ({
+const Scratch: React.FC<{ 
+  state: number; 
+  style?: React.CSSProperties;
+  rotationAverage?: number;
+}> = ({
   state,
   style,
+  rotationAverage,
 }) => (
   <div
     className={`
@@ -15,6 +20,16 @@ const Scratch: React.FC<{ state: number; style?: React.CSSProperties }> = ({
     `}
     style={style}
   >
+    {rotationAverage !== undefined && rotationAverage > 0 && (
+      <span className={`
+        absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+        text-[20px] font-bold z-10
+        ${state !== 0 ? 'text-[#333]' : 'text-white'}
+        [text-shadow:1px_1px_2px_rgba(0,0,0,0.5)]
+      `}>
+        {Math.round(rotationAverage)}
+      </span>
+    )}
     <span className="sr-only">scratch</span>
   </div>
 );
@@ -54,8 +69,8 @@ export const IIDXController: React.FC<{
   // 無効化状態の場合はダミーデータを表示
   const displayStatus = status || {
     keys: Array(7).fill({ isPressed: false }),
-    scratch: { state: 0 },
-    record: { keyReleaseTimes: [] }
+    scratch: { state: 0, strokeDistance: 0 },
+    record: { keyReleaseTimes: [], scratchRotationDistances: [] }
   };
 
   // 各鍵盤のリリーススピード平均を計算
@@ -65,12 +80,19 @@ export const IIDXController: React.FC<{
       : 0;
   });
 
+  // スクラッチ回転距離の平均を計算（最新1件のストローク距離の平均）
+  const recentDistances = (displayStatus.record.scratchRotationDistances || []).slice(0, 1);
+  const scratchRotationAverage = recentDistances.length > 0
+    ? recentDistances.reduce((v, c) => v + c, 0) / recentDistances.length
+    : 0;
+  
+
   if (is2P) {
     return (
       <div className={`flex items-center justify-center ${disabled ? 'opacity-60 grayscale' : ''}`}>
-        <div className="keys-container">
+        <div className="flex gap-5">
           {displayStatus.keys.map((key, i) => (
-            <div key={i}>
+            <div key={i} className={`${i % 2 === 0 ? 'mt-[85px] -ml-[30px]' : '-ml-[30px]'} ${i === 0 ? '!ml-0' : ''}`}>
               <Button 
                 isPressed={key.isPressed} 
                 index={i} 
@@ -79,17 +101,25 @@ export const IIDXController: React.FC<{
             </div>
           ))}
         </div>
-        <Scratch state={displayStatus.scratch.state} style={{ marginRight: "-30px", marginLeft: "20px" }} />
+        <Scratch 
+          state={displayStatus.scratch.state} 
+          style={{ marginRight: "-30px", marginLeft: "20px" }}
+          rotationAverage={scratchRotationAverage}
+        />
       </div>
     );
   }
 
   return (
     <div className={`flex items-center justify-center ${disabled ? 'opacity-60 grayscale' : ''}`}>
-      <Scratch state={displayStatus.scratch.state} style={{ marginRight: "30px" }} />
-      <div className="keys-container">
+      <Scratch 
+        state={displayStatus.scratch.state} 
+        style={{ marginRight: "30px" }}
+        rotationAverage={scratchRotationAverage}
+      />
+      <div className="flex gap-5">
         {displayStatus.keys.map((key, i) => (
-          <div key={i}>
+          <div key={i} className={`${i % 2 === 0 ? 'mt-[85px] -ml-[30px]' : '-ml-[30px]'} ${i === 0 ? '!ml-0' : ''}`}>
             <Button 
               isPressed={key.isPressed} 
               index={i} 
