@@ -8,6 +8,43 @@ use tokio::sync::{broadcast, Mutex};
 use warp::ws::{Message, WebSocket};
 use warp::Filter;
 use tauri::Manager;
+use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::PathBuf;
+
+#[derive(Serialize, Deserialize)]
+struct WindowPosition {
+    x: i32,
+    y: i32,
+}
+
+fn get_config_path() -> PathBuf {
+    let mut path = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+    path.push("iidx-input-monitor");
+    fs::create_dir_all(&path).ok();
+    path.push("window-position.json");
+    path
+}
+
+fn save_window_position(position: &WindowPosition) -> Result<(), Box<dyn std::error::Error>> {
+    let path = get_config_path();
+    let json = serde_json::to_string_pretty(position)?;
+    fs::write(path, json)?;
+    Ok(())
+}
+
+fn load_window_position() -> Option<WindowPosition> {
+    let path = get_config_path();
+    if path.exists() {
+        if let Ok(json) = fs::read_to_string(path) {
+            serde_json::from_str(&json).ok()
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
 
 // Check if a port is already in use
 fn is_port_in_use(port: u16) -> bool {
@@ -47,9 +84,6 @@ async fn resize_window(
     let new_size = Size::Logical(LogicalSize { width: width as f64, height: height as f64 });
     window.set_size(new_size).map_err(|e| e.to_string())?;
     
-    // ウィンドウを中央に配置
-    window.center().map_err(|e| e.to_string())?;
-    
     Ok(())
 }
 
@@ -87,10 +121,67 @@ fn main() {
     tauri::Builder::default()
         .setup(move |app| {
             // "main" ウィンドウの取得
-            let _main_window = app.get_webview_window("main").unwrap();
+            let main_window = app.get_webview_window("main").unwrap();
 
-            // ウィンドウに window-shadows の装飾を適用（削除済み）
-            // Tauri v2では他の方法でシャドウを設定
+            // 保存されたウィンドウ位置を復元
+            if let Some(position) = load_window_position() {
+                use tauri::{LogicalPosition, Position};
+                
+                // 現在のモニター情報を取得してウィンドウが画面内にあるか確認
+                let mut valid_position = true;
+                if let Ok(monitors) = main_window.available_monitors() {
+                    valid_position = false;
+                    for monitor in monitors {
+                        let monitor_pos = monitor.position();
+                        let monitor_size = monitor.size();
+                        let monitor_left = monitor_pos.x;
+                        let monitor_top = monitor_pos.y;
+                        let monitor_right = monitor_left + monitor_size.width as i32;
+                        let monitor_bottom = monitor_top + monitor_size.height as i32;
+                        
+                        // ウィンドウの一部でもモニター内にあればOK
+                        if position.x < monitor_right && 
+                           position.x + 410 > monitor_left &&
+                           position.y < monitor_bottom &&
+                           position.y + 250 > monitor_top {
+                            valid_position = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // 有効な位置の場合のみ復元
+                if valid_position {
+                    let logical_position = Position::Logical(LogicalPosition {
+                        x: position.x as f64,
+                        y: position.y as f64,
+                    });
+                    main_window.set_position(logical_position).ok();
+                } else {
+                    // 無効な位置の場合は中央に配置
+                    main_window.center().ok();
+                }
+            } else {
+                // 初回起動時は中央に配置
+                main_window.center().ok();
+            }
+            
+            // ウィンドウを表示
+            main_window.show().ok();
+
+            // ウィンドウが閉じられる前に位置を保存
+            let window_clone = main_window.clone();
+            main_window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                    if let Ok(position) = window_clone.outer_position() {
+                        let window_position = WindowPosition {
+                            x: position.x,
+                            y: position.y,
+                        };
+                        save_window_position(&window_position).ok();
+                    }
+                }
+            });
 
             let app_handle = app.handle();
             app_handle.manage(is_websocket_running);

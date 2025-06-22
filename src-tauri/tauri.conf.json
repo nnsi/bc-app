@@ -31,7 +31,9 @@
         "height": 250,
         "transparent": true,
         "decorations": false,
-        "shadow": true
+        "shadow": true,
+        "center": false,
+        "visible": false
       }
     ],
     "security": {

@@ -20,6 +20,7 @@ tokio = { version = "1", features = ["full"] }
 warp = "0.3"
 futures-util = "0.3"
 tauri-plugin-gamepad = "0.0.5"
+dirs = "5.0"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
