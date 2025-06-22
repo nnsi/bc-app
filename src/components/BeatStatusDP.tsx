@@ -3,20 +3,7 @@
  */
 
 import React, { useMemo } from 'react';
-import styled from 'styled-components';
 import { ControllerStatus } from '../types/controller';
-
-const StatsContainer = styled.div`
-  margin-top: 0;
-  color: #fff;
-  text-align: left;
-`;
-
-const StatLine = styled.p`
-  margin: 4px 0;
-  font-size: 14px;
-  text-align: left;
-`;
 
 interface BeatStatusDPProps {
   /** 1P側のコントローラー状態 */
@@ -100,24 +87,24 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
   if (mode === 'SP') {
     const stats = player1Status ? player1Stats : player2Stats;
     return (
-      <StatsContainer>
-        <StatLine>
+      <div className="mt-0 text-white text-left">
+        <p className="my-1 text-sm text-left">
           {stats.releaseAverage.toString().padStart(2, '0')} ms | {stats.density.toString().padStart(2, '0')} / s
-        </StatLine>
-        <StatLine>Total: {stats.count}</StatLine>
-      </StatsContainer>
+        </p>
+        <p className="my-1 text-sm text-left">Total: {stats.count}</p>
+      </div>
     );
   }
 
   // DPモードは統合統計のみ表示
   return (
-    <StatsContainer style={{ marginTop: '-1.1rem',lineHeight: '1' }}>
-      <StatLine>
+    <div className="text-white text-left absolute left-2 bottom-2">
+      <p className="my-1 text-sm text-left">
         {combinedStats.releaseAverage.toString().padStart(2, '0')} ms | {combinedStats.density.toString().padStart(2, '0')} / s
-      </StatLine>
-      <StatLine>
+      </p>
+      <p className="my-1 text-sm text-left">
         Total: {combinedStats.count}
-      </StatLine>
-    </StatsContainer>
+      </p>
+    </div>
   );
 };

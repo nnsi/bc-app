@@ -3,44 +3,6 @@
  */
 
 import React, { memo } from 'react';
-import styled from 'styled-components';
-
-const Container = styled.div`
-  text-align: center;
-  padding: 20px 0;
-`;
-
-const StatusMessage = styled.p`
-  color: #4a9eff;
-  font-size: 16px;
-  margin-bottom: 10px;
-`;
-
-const AssignmentInfo = styled.div`
-  margin-top: 15px;
-  padding: 10px;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  font-size: 12px;
-  color: #ccc;
-`;
-
-const PlayerStatus = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 10px;
-  margin: 5px 0;
-`;
-
-const PlayerLabel = styled.span`
-  color: #4a9eff;
-  font-weight: 600;
-`;
-
-const GamepadInfo = styled.span`
-  color: #fff;
-`;
 
 interface DPGamepadSelectorProps {
   /** エラーメッセージ */
@@ -75,38 +37,38 @@ const DPGamepadSelectorComponent: React.FC<DPGamepadSelectorProps> = ({
   };
 
   return (
-    <Container>
-      <StatusMessage>
+    <div className="text-center py-5">
+      <p className="text-[#4a9eff] text-[16px] mb-[10px]">
         {getMessage()}
-      </StatusMessage>
+      </p>
       
       {(assignments.player1 || assignments.player2) && (
-        <AssignmentInfo>
-          <PlayerStatus>
-            <PlayerLabel>1P側:</PlayerLabel>
-            <GamepadInfo>
+        <div className="mt-[15px] p-[10px] bg-white/5 rounded-md text-[12px] text-[#ccc]">
+          <div className="flex justify-between items-center px-[10px] py-[5px] my-[5px]">
+            <span className="text-[#4a9eff] font-semibold">1P側:</span>
+            <span className="text-white">
               {assignments.player1 
                 ? `${assignments.player1.id} (Index: ${assignments.player1.index})`
                 : '未接続'}
-            </GamepadInfo>
-          </PlayerStatus>
-          <PlayerStatus>
-            <PlayerLabel>2P側:</PlayerLabel>
-            <GamepadInfo>
+            </span>
+          </div>
+          <div className="flex justify-between items-center px-[10px] py-[5px] my-[5px]">
+            <span className="text-[#4a9eff] font-semibold">2P側:</span>
+            <span className="text-white">
               {assignments.player2 
                 ? `${assignments.player2.id} (Index: ${assignments.player2.index})`
                 : '未接続'}
-            </GamepadInfo>
-          </PlayerStatus>
-        </AssignmentInfo>
+            </span>
+          </div>
+        </div>
       )}
       
       {error && (
-        <p style={{ textAlign: 'center', color: '#ff6b6b', fontSize: '12px', marginTop: '10px' }}>
+        <p className="text-center text-[#ff6b6b] text-[12px] mt-[10px]">
           {error}
         </p>
       )}
-    </Container>
+    </div>
   );
 };
 

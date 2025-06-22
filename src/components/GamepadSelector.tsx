@@ -3,7 +3,6 @@
  */
 
 import React, { memo } from 'react';
-import { TEXT_STYLES } from '../constants/styles';
 
 interface GamepadSelectorProps {
   /** エラーメッセージ */
@@ -17,11 +16,11 @@ interface GamepadSelectorProps {
 const GamepadSelectorComponent: React.FC<GamepadSelectorProps> = ({ error }) => {
   return (
     <>
-      <p style={TEXT_STYLES.CENTER}>
+      <p className="text-center">
         {error || 'コントローラーのボタンを長押ししてください'}
       </p>
       {error && (
-        <p style={{ ...TEXT_STYLES.CENTER, color: '#ff6b6b', fontSize: '12px' }}>
+        <p className="text-center mb-[10px] text-[#ff6b6b] text-[12px]">
           {error}
         </p>
       )}

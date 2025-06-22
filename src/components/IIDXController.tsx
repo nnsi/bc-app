@@ -1,239 +1,133 @@
 import React from "react";
-import styled from "styled-components";
 import { ControllerStatus } from "../types/controller";
 
-const Scratch: React.FC<{ className?: string; state: number; style?: React.CSSProperties }> = ({
-  className,
+const Scratch: React.FC<{ 
+  state: number; 
+  style?: React.CSSProperties;
+  rotationAverage?: number;
+}> = ({
   state,
   style,
+  rotationAverage,
 }) => (
-  <p
-    className={`${className} ${
-      state === 1 ? "up" : state === -1 ? "down" : "neutral"
-    }`}
+  <div
+    className={`
+      w-[100px] h-[100px] rounded-[50px] text-[0px]
+      relative overflow-hidden
+      ${state === 0 ? 'bg-[#666] border-2 border-[#333]' : ''}
+      ${state === 1 ? 'scratch-up' : ''}
+      ${state === -1 ? 'scratch-down' : ''}
+    `}
     style={style}
   >
-    scratch
-  </p>
+    {rotationAverage !== undefined && rotationAverage > 0 && (
+      <span className={`
+        absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2
+        text-[20px] font-bold z-20
+        text-white
+        [text-shadow:2px_2px_4px_rgba(0,0,0,0.8)]
+      `}>
+        {Math.round(rotationAverage)}
+      </span>
+    )}
+    <span className="sr-only">scratch</span>
+  </div>
 );
 
-const StyledScratch = styled(Scratch)`
-  width: 100px;
-  height: 100px;
-  background: #666;
-  border-radius: 50px;
-  font-size: 0;
-  margin: 0 50px;
-  transition: all 0.05s ease-out;
-  position: relative;
-  overflow: hidden;
-  border: 2px solid #333;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 50%;
-    left: 0;
-    transition: all 0.1s ease-out;
-    opacity: 0;
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-  
-  &.up {
-    background: linear-gradient(to bottom, #ccffff 0%, #999 50%, #666 100%);
-    transform: scale(0.98);
-    border-color: #ccffff;
-    
-    &::before {
-      top: 0;
-      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
-      opacity: 1;
-    }
-    
-    &::after {
-      opacity: 1;
-    }
-    
-    box-shadow: 
-      0 -10px 30px 5px rgba(204, 255, 255, 0.8),
-      0 0 50px 10px rgba(204, 255, 255, 0.4),
-      inset 0 20px 30px rgba(255, 255, 255, 0.6);
-  }
-  
-  &.down {
-    background: linear-gradient(to top, #ccffff 0%, #999 50%, #666 100%);
-    transform: scale(0.98);
-    border-color: #ccffff;
-    
-    &::before {
-      bottom: 0;
-      background: linear-gradient(to top, rgba(255, 255, 255, 0.9) 0%, transparent 100%);
-      opacity: 1;
-    }
-    
-    &::after {
-      opacity: 1;
-    }
-    
-    box-shadow: 
-      0 10px 30px 5px rgba(204, 255, 255, 0.8),
-      0 0 50px 10px rgba(204, 255, 255, 0.4),
-      inset 0 -20px 30px rgba(255, 255, 255, 0.6);
-  }
-`;
-
 const Button: React.FC<{
-  className?: string;
   isPressed: boolean;
   index: number;
   releaseSpeed?: number;
-}> = ({ className, isPressed, index, releaseSpeed }) => {
+}> = ({ isPressed, index, releaseSpeed }) => {
   return (
-    <p
-      className={`${className} ${isPressed && "pressed"} ${
-        index % 2 === 0 ? "even" : "odd"
-      }`}
+    <div
+      className={`
+        w-[40px] h-[70px] transition-all duration-[50ms] ease-out
+        relative overflow-hidden border border-[#333] flex items-center justify-center
+        ${index % 2 === 0 ? 'bg-[#999]' : 'bg-[#666]'}
+        ${isPressed ? 'button-pressed' : ''}
+      `}
     >
       {releaseSpeed !== undefined && releaseSpeed > 0 && (
-        <span className="release-speed">{releaseSpeed}</span>
+        <span className={`
+          text-[14px] font-bold z-10 relative
+          ${isPressed ? 'text-[#333]' : 'text-white'}
+          [text-shadow:1px_1px_2px_rgba(0,0,0,0.5)]
+        `}>
+          {releaseSpeed}
+        </span>
       )}
-    </p>
+    </div>
   );
 };
 
-const StyledButton = styled(Button)`
-  width: 40px;
-  height: 70px;
-  color: red;
-  transition: all 0.05s ease-out;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-  &.even {
-    background: #999;
-  }
-  &.odd {
-    background: #666;
-  }
-  
-  .release-speed {
-    font-size: 14px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-    z-index: 10;
-    position: relative;
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    background: radial-gradient(circle, #ffffff 0%, transparent 70%);
-    transform: translate(-50%, -50%);
-    transition: width 0.2s, height 0.2s;
-  }
-  
-  &.pressed {
-    background: #ccffff;
-    transform: scale(0.95);
-    border-color: #ccffff;
-    box-shadow: 
-      0 0 20px 2px rgba(204, 255, 255, 0.8),
-      0 0 40px 4px rgba(204, 255, 255, 0.4),
-      inset 0 0 10px rgba(255, 255, 255, 0.5);
-    
-    .release-speed {
-      color: #333;
-    }
-    
-    &::before {
-      width: 150%;
-      height: 150%;
-    }
-  }
-`;
-
-const IIDXControllerComponent: React.FC<{
-  className?: string;
-  status: ControllerStatus;
+export const IIDXController: React.FC<{
+  status: ControllerStatus | null;
   is2P?: boolean;
-}> = ({ className, status, is2P = false }) => {
+  disabled?: boolean;
+}> = ({ status, is2P = false, disabled = false }) => {
+  // 無効化状態の場合はダミーデータを表示
+  const displayStatus = status || {
+    keys: Array(7).fill({ isPressed: false }),
+    scratch: { state: 0, strokeDistance: 0 },
+    record: { keyReleaseTimes: [], scratchRotationDistances: [] }
+  };
+
   // 各鍵盤のリリーススピード平均を計算
-  const keyReleaseAverages = (status.record.keyReleaseTimes || [[], [], [], [], [], [], []]).map((times) => {
+  const keyReleaseAverages = (displayStatus.record.keyReleaseTimes || [[], [], [], [], [], [], []]).map((times) => {
     return times.length > 0
       ? Math.ceil(times.reduce((v, c) => v + c, 0) / times.length)
       : 0;
   });
 
+  // スクラッチ回転距離の平均を計算（最新1件のストローク距離の平均）
+  const recentDistances = (displayStatus.record.scratchRotationDistances || []).slice(0, 1);
+  const scratchRotationAverage = recentDistances.length > 0
+    ? recentDistances.reduce((v, c) => v + c, 0) / recentDistances.length
+    : 0;
+  
+
   if (is2P) {
     return (
-      <div className={className}>
-        <div className="keys">
-          {status.keys.map((key, i) => (
-            <StyledButton 
-              isPressed={key.isPressed} 
-              index={i} 
-              key={i} 
-              releaseSpeed={keyReleaseAverages[i]}
-            />
+      <div className={`flex items-center justify-center ${disabled ? 'opacity-60 grayscale' : ''}`}>
+        <div className="flex gap-5">
+          {displayStatus.keys.map((key, i) => (
+            <div key={i} className={`${i % 2 === 0 ? 'mt-[85px] -ml-[30px]' : '-ml-[30px]'} ${i === 0 ? '!ml-0' : ''}`}>
+              <Button 
+                isPressed={key.isPressed} 
+                index={i} 
+                releaseSpeed={keyReleaseAverages[i]}
+              />
+            </div>
           ))}
         </div>
-        <StyledScratch state={status.scratch.state} style={{ marginRight: "-30px", marginLeft: "20px" }} />
+        <Scratch 
+          state={displayStatus.scratch.state} 
+          style={{ marginRight: "-30px", marginLeft: "20px" }}
+          rotationAverage={scratchRotationAverage}
+        />
       </div>
     );
   }
 
   return (
-    <div className={className}>
-      <StyledScratch state={status.scratch.state} style={{ marginLeft: "-10px" }} />
-      <div className="keys">
-        {status.keys.map((key, i) => (
-          <StyledButton 
-            isPressed={key.isPressed} 
-            index={i} 
-            key={i} 
-            releaseSpeed={keyReleaseAverages[i]}
-          />
+    <div className={`flex items-center justify-center ${disabled ? 'opacity-60 grayscale' : ''}`}>
+      <Scratch 
+        state={displayStatus.scratch.state} 
+        style={{ marginRight: "30px" }}
+        rotationAverage={scratchRotationAverage}
+      />
+      <div className="flex gap-5">
+        {displayStatus.keys.map((key, i) => (
+          <div key={i} className={`${i % 2 === 0 ? 'mt-[85px] -ml-[30px]' : '-ml-[30px]'} ${i === 0 ? '!ml-0' : ''}`}>
+            <Button 
+              isPressed={key.isPressed} 
+              index={i} 
+              releaseSpeed={keyReleaseAverages[i]}
+            />
+          </div>
         ))}
       </div>
     </div>
   );
 };
-
-export const IIDXController = styled(IIDXControllerComponent)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  .keys {
-    display: flex;
-    gap: 20px;
-    p:nth-child(odd) {
-      margin-top: 85px;
-      margin-left: -30px;
-    }
-    p:nth-child(even) {
-      margin-left: -30px;
-    }
-  }
-`;

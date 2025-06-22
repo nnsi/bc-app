@@ -1,7 +1,7 @@
 {
   "name": "bc-app",
   "private": true,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -10,16 +10,12 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
-    "@fontsource/noto-sans": "^5.2.7",
-    "@mui/icons-material": "^5.15.4",
-    "@mui/material": "^5.15.4",
+    "@tailwindcss/vite": "^4.1.10",
     "@tauri-apps/api": "^2.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",
-    "styled-components": "^6.1.6",
+    "tailwindcss": "^4.1.10",
     "tauri-plugin-gamepad-api": "^0.0.5"
   },
   "devDependencies": {

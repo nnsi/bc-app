@@ -34,6 +34,12 @@ export interface ScratchStatus {
   state: -1 | 0 | 1;
   /** スクラッチ回数 */
   count: number;
+  /** 今回の回転距離 */
+  rotationDistance: number;
+  /** 回転距離記録時刻(UNIX時間) */
+  rotationTime: number;
+  /** 現在のストロークの累積回転距離 */
+  strokeDistance: number;
 }
 
 /**
@@ -48,6 +54,8 @@ export interface Record {
   pressedTimes: number[];
   /** スクラッチ回転時刻の配列(最大500件、UNIX時間) */
   scratchTimes: number[];
+  /** スクラッチ回転距離の配列(最大2000件) */
+  scratchRotationDistances: number[];
 }
 
 /**

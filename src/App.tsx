@@ -17,7 +17,7 @@ import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
 import { IIDXControllerDP } from "./components/IIDXControllerDP";
 import { BeatStatusDP } from "./components/BeatStatusDP";
 import { DPGamepadSelector } from "./components/DPGamepadSelector";
-import "@fontsource/noto-sans"
+import { hasSPControllerChanged, hasDPControllerChanged } from "./utils/controllerCompare";
 
 
 /**
@@ -124,6 +124,17 @@ function App() {
   } = useWebSocketDP({
     ipAddress,
   });
+
+  // DPモードで両方のゲームパッドが割り当てられたらWebSocket接続
+  useEffect(() => {
+    if (settings.playMode.mode === 'DP' && !isReceiveMode &&
+        settings.playMode.dp1PGamepadIndex !== null && 
+        settings.playMode.dp2PGamepadIndex !== null &&
+        !ws) {
+      console.log('[App] DP mode gamepads assigned, connecting WebSocket');
+      connectWebSocket();
+    }
+  }, [settings.playMode.mode, isReceiveMode, settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex, ws, connectWebSocket]);
   
   // ゲームパッド自動検出（SPモード用、受信モードでは無効）
   const { selectedGamepadIndex, error: gamepadError, reset: resetGamepad } = useGamepadDetection({
@@ -143,6 +154,7 @@ function App() {
     dp1PGamepadIndex: isReceiveMode ? null : settings.playMode.dp1PGamepadIndex,
     dp2PGamepadIndex: isReceiveMode ? null : settings.playMode.dp2PGamepadIndex,
   });
+
   
   // SPモードのデバッグ情報（モード切り替え時のみ）
   useEffect(() => {
@@ -164,7 +176,7 @@ function App() {
     // ローカルモード
     return settings.playMode.mode === 'SP' ? spControllerStatus : dpControllerStatus;
   })();
-
+  
   // プレイヤーサイドの変更をlocalStorageに保存
   useEffect(() => {
     localStorage.setItem('playerSide', is2P ? '2P' : '1P');
@@ -190,11 +202,17 @@ function App() {
         // SPモードからDPモードに切り替わった時
         // SPモードのコントローラー状態をクリア
         resetCount();
+        // SPモードのゲームパッド選択をリセット
+        resetGamepad();
+        // DPモードのゲームパッド割り当てをリセット
+        resetDPGamepadMapping();
+        // 自動割り当てを開始
+        startAutoAssignment();
       }
       
       prevModeRef.current = settings.playMode.mode;
     }
-  }, [settings.playMode.mode, resetGamepad, isAutoAssigning, cancelAssignment, resetCount]);
+  }, [settings.playMode.mode, resetGamepad, isAutoAssigning, cancelAssignment, resetCount, resetDPGamepadMapping, startAutoAssignment]);
 
   // コントローラーデータを送信（データが変更された時のみ）
   const prevControllerStatusRef = useRef<ControllerStatus | null>(null);
@@ -203,19 +221,16 @@ function App() {
   useEffect(() => {
     if (ws && !isReceiveMode) {
       if (settings.playMode.mode === 'SP' && spControllerStatus) {
-        // SPモード - 前回の値と比較（pressedTimesで変化を検出）
-        const hasChanged = !prevControllerStatusRef.current || 
-          prevControllerStatusRef.current.record.pressedTimes.length !== spControllerStatus.record.pressedTimes.length ||
-          prevControllerStatusRef.current.scratch.count !== spControllerStatus.scratch.count;
+        // SPモード - ユーティリティ関数を使用して変化を検出
+        const hasChanged = hasSPControllerChanged(prevControllerStatusRef.current, spControllerStatus);
         
         if (hasChanged) {
           sendSP(spControllerStatus);
           prevControllerStatusRef.current = spControllerStatus;
         }
       } else if (settings.playMode.mode === 'DP' && dpControllerStatus) {
-        // DPモード - 簡易的な比較（timestampで判定）
-        const hasChanged = !prevDPControllerStatusRef.current || 
-          prevDPControllerStatusRef.current.timestamp !== dpControllerStatus.timestamp;
+        // DPモード - 詳細な変更検出
+        const hasChanged = hasDPControllerChanged(prevDPControllerStatusRef.current, dpControllerStatus);
         
         if (hasChanged) {
           sendDP(dpControllerStatus);
@@ -248,16 +263,15 @@ function App() {
       // 自動割り当てを再開始
       startAutoAssignment();
     }
-  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment]);
+  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment, isReceiveMode, receivedData]);
   
   const handleReceiveModeClick = useCallback(() => {
-    console.log('[App] Entering receive mode');
     connectWebSocket();
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
   
   return (
-    <div style={{ fontFamily: "Noto Sans JP" }}>
+    <div className="min-h-screen bg-neutral-700 text-white overflow-hidden select-none text-sm">
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
@@ -265,7 +279,7 @@ function App() {
         currentMode={settings.playMode.mode}
         onModeChange={setPlayMode}
       />
-      <div className="container">
+      <div className="p-[5px] mt-4">
         {wsError && (
           <ErrorMessage
             message={wsError.message}
@@ -280,14 +294,14 @@ function App() {
           <>
             {/* SPモード */}
             {settings.playMode.mode === 'SP' && !spControllerStatus && (
-              <>
+              <div className="flex flex-col gap-4">
                 <GamepadSelector error={gamepadError} />
                 <ConnectionSettings
                   ipAddress={ipAddress}
                   onIpAddressChange={setIpAddress}
                   onReceiveModeClick={handleReceiveModeClick}
                 />
-              </>
+              </div>
             )}
             
             {/* DPモード */}
@@ -321,12 +335,7 @@ function App() {
         
         {/* 受信モードの状態表示 */}
         {isReceiveMode && !displayStatus && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '20px',
-            color: '#4a9eff',
-            fontSize: '16px'
-          }}>
+          <div className="text-center p-5 text-[#4a9eff] text-[16px]">
             受信モードで待機中...
           </div>
         )}
@@ -335,7 +344,7 @@ function App() {
         {displayStatus && (
           <>
             {/* SPモードまたは旧ControllerStatus形式 */}
-            {!('mode' in displayStatus) && (
+            {(!('mode' in displayStatus) || (displayStatus.mode !== 'DP')) && (
               <>
                 <ControllerDisplay 
                   status={displayStatus as ControllerStatus} 
@@ -354,7 +363,7 @@ function App() {
                   mode="DP"
                   currentPlayerSide="1P"
                 />
-                <div style={{ marginTop: '20px' }}>
+                <div className="mt-5">
                   <BeatStatusDP
                     player1Status={displayStatus.player1}
                     player2Status={displayStatus.player2}
