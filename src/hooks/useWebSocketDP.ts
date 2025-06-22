@@ -175,6 +175,8 @@ export function useWebSocketDP({
 
   const sendDP = useCallback((data: DPControllerStatus) => {
     if (ws?.readyState === WebSocket.OPEN) {
+      // デバッグ用ログ追加
+      if (APP.DEBUG) console.log('[WebSocket] Sending DP data:', data);
       ws.send(JSON.stringify(data));
     }
   }, [ws]);

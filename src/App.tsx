@@ -123,6 +123,17 @@ function App() {
   } = useWebSocketDP({
     ipAddress,
   });
+
+  // DPモードで両方のゲームパッドが割り当てられたらWebSocket接続
+  useEffect(() => {
+    if (settings.playMode.mode === 'DP' && !isReceiveMode &&
+        settings.playMode.dp1PGamepadIndex !== null && 
+        settings.playMode.dp2PGamepadIndex !== null &&
+        !ws) {
+      console.log('[App] DP mode gamepads assigned, connecting WebSocket');
+      connectWebSocket();
+    }
+  }, [settings.playMode.mode, isReceiveMode, settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex, ws, connectWebSocket]);
   
   // ゲームパッド自動検出（SPモード用、受信モードでは無効）
   const { selectedGamepadIndex, error: gamepadError, reset: resetGamepad } = useGamepadDetection({
@@ -142,6 +153,7 @@ function App() {
     dp1PGamepadIndex: isReceiveMode ? null : settings.playMode.dp1PGamepadIndex,
     dp2PGamepadIndex: isReceiveMode ? null : settings.playMode.dp2PGamepadIndex,
   });
+
   
   // SPモードのデバッグ情報（モード切り替え時のみ）
   useEffect(() => {
