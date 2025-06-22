@@ -8,16 +8,14 @@ import { GAMEPAD_CONSTANTS } from '../types/gamepad';
 import { APP } from '../constants/app';
 
 interface UseGamepadAssignmentReturn {
-  /** 割り当て中のプレイヤー */
-  assigningPlayer: '1P' | '2P' | null;
-  /** 1P側の割り当てを開始 */
-  startAssign1P: () => void;
-  /** 2P側の割り当てを開始 */
-  startAssign2P: () => void;
-  /** 割り当てをキャンセル */
-  cancelAssignment: () => void;
   /** エラー情報 */
   error: string | null;
+  /** 自動割り当てモードを開始 */
+  startAutoAssignment: () => void;
+  /** 自動割り当てモード中かどうか */
+  isAutoAssigning: boolean;
+  /** 割り当てをキャンセル */
+  cancelAssignment: () => void;
 }
 
 interface UseGamepadAssignmentProps {
@@ -34,10 +32,11 @@ export function useGamepadAssignment({
   onAssign1P,
   onAssign2P,
 }: UseGamepadAssignmentProps): UseGamepadAssignmentReturn {
-  const [assigningPlayer, setAssigningPlayer] = useState<'1P' | '2P' | null>(null);
   const [getGamepads, setGetGamepads] = useState<typeof GetGamepadsType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const autoAssignedGamepadsRef = useRef<Set<number>>(new Set());
 
   // Tauriが利用可能かチェック
   const isTauriAvailable = useCallback(() => {
@@ -69,7 +68,7 @@ export function useGamepadAssignment({
 
   // ゲームパッド入力を検出
   const detectGamepadInput = useCallback(() => {
-    if (!assigningPlayer || !getGamepads) {
+    if (!isAutoAssigning || !getGamepads) {
       return;
     }
 
@@ -95,19 +94,27 @@ export function useGamepadAssignment({
         });
 
         if (pressedButton !== -1) {
-          console.log(`[GamepadAssignment] Button ${pressedButton} pressed on gamepad ${gamepad.index} for ${assigningPlayer}`);
+          console.log(`[GamepadAssignment] Button ${pressedButton} pressed on gamepad ${gamepad.index}`);
           
-          // 割り当て実行
-          if (assigningPlayer === '1P') {
-            console.log('[GamepadAssignment] Assigning to 1P:', gamepad.index);
-            onAssign1P(gamepad.index);
-          } else if (assigningPlayer === '2P') {
-            console.log('[GamepadAssignment] Assigning to 2P:', gamepad.index);
-            onAssign2P(gamepad.index);
+          // まだ割り当てられていないゲームパッドの場合のみ処理
+          if (!autoAssignedGamepadsRef.current.has(gamepad.index)) {
+            if (autoAssignedGamepadsRef.current.size === 0) {
+              // 最初のゲームパッドは1Pに割り当て
+              console.log('[GamepadAssignment] Auto-assigning first gamepad to 1P:', gamepad.index);
+              console.log('[GamepadAssignment] Current assigned:', Array.from(autoAssignedGamepadsRef.current));
+              onAssign1P(gamepad.index);
+              autoAssignedGamepadsRef.current.add(gamepad.index);
+            } else if (autoAssignedGamepadsRef.current.size === 1) {
+              // 2番目のゲームパッドは2Pに割り当て
+              console.log('[GamepadAssignment] Auto-assigning second gamepad to 2P:', gamepad.index);
+              console.log('[GamepadAssignment] Current assigned:', Array.from(autoAssignedGamepadsRef.current));
+              onAssign2P(gamepad.index);
+              autoAssignedGamepadsRef.current.add(gamepad.index);
+              // 両方割り当て完了したら自動割り当てモードを終了
+              setIsAutoAssigning(false);
+              setError(null);
+            }
           }
-          
-          setAssigningPlayer(null);
-          setError(null);
           break;
         }
       }
@@ -115,30 +122,26 @@ export function useGamepadAssignment({
       const errorMessage = 'ゲームパッド検出中にエラーが発生しました';
       setError(errorMessage);
     }
-  }, [assigningPlayer, getGamepads, onAssign1P, onAssign2P]);
-
-  // 1P側の割り当てを開始
-  const startAssign1P = useCallback(() => {
-    setAssigningPlayer('1P');
-    setError(null);
-  }, []);
-
-  // 2P側の割り当てを開始
-  const startAssign2P = useCallback(() => {
-    setAssigningPlayer('2P');
-    setError(null);
-    console.log('[GamepadAssignment] Starting 2P gamepad assignment');
-  }, []);
+  }, [getGamepads, onAssign1P, onAssign2P, isAutoAssigning]);
 
   // 割り当てをキャンセル
   const cancelAssignment = useCallback(() => {
-    setAssigningPlayer(null);
     setError(null);
+    setIsAutoAssigning(false);
+    autoAssignedGamepadsRef.current = new Set();
+  }, []);
+
+  // 自動割り当てモードを開始
+  const startAutoAssignment = useCallback(() => {
+    setIsAutoAssigning(true);
+    autoAssignedGamepadsRef.current = new Set();
+    setError(null);
+    console.log('[GamepadAssignment] Starting auto assignment mode');
   }, []);
 
   // 自動検出のインターバル設定
   useEffect(() => {
-    if (!getGamepads || !assigningPlayer) {
+    if (!getGamepads || !isAutoAssigning) {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
@@ -159,13 +162,12 @@ export function useGamepadAssignment({
         intervalRef.current = null;
       }
     };
-  }, [getGamepads, assigningPlayer]); // detectGamepadInputを依存配列から削除
+  }, [getGamepads, isAutoAssigning]); // detectGamepadInputを依存配列から削除
 
   return {
-    assigningPlayer,
-    startAssign1P,
-    startAssign2P,
-    cancelAssignment,
     error,
+    startAutoAssignment,
+    isAutoAssigning,
+    cancelAssignment,
   };
 }

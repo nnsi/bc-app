@@ -18,9 +18,9 @@ import { useMultiGamepadDetection } from "./hooks/useMultiGamepadDetection";
 import { useWindowResize } from "./hooks/useWindowResize";
 import { useWebSocketDP } from "./hooks/useWebSocketDP";
 import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
-import { PlayModeSettings } from "./components/PlayModeSettings";
 import { IIDXControllerDP } from "./components/IIDXControllerDP";
 import { BeatStatusDP } from "./components/BeatStatusDP";
+import { DPGamepadSelector } from "./components/DPGamepadSelector";
 import "@fontsource/noto-sans"
 
 
@@ -36,15 +36,27 @@ function App() {
     const saved = localStorage.getItem('playerSide');
     return saved === '2P';
   });
-  // 設定画面表示フラグ
-  const [showSettings, setShowSettings] = useState(false);
   
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
   const { isReceiveMode, setReceiveMode, resetMode } = useAppMode();
   
   // 設定管理
-  const { settings, setPlayMode, setDPGamepadMapping } = useSettings();
+  const { settings, setPlayMode, setDPGamepadMapping, resetDPGamepadMapping } = useSettings();
+  
+  // DPモードの割り当て状態を追跡するためのref
+  const dpAssignmentRef = useRef<{ player1: number | null; player2: number | null }>({
+    player1: settings.playMode.dp1PGamepadIndex,
+    player2: settings.playMode.dp2PGamepadIndex,
+  });
+  
+  // 設定が変更されたらrefも更新
+  useEffect(() => {
+    dpAssignmentRef.current = {
+      player1: settings.playMode.dp1PGamepadIndex,
+      player2: settings.playMode.dp2PGamepadIndex,
+    };
+  }, [settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex]);
   
   // ウィンドウリサイズ
   useWindowResize({ playMode: settings.playMode.mode });
@@ -57,25 +69,34 @@ function App() {
   
   // DPモード用ゲームパッド割り当て
   const { 
-    assigningPlayer, 
-    startAssign1P, 
-    startAssign2P, 
-    cancelAssignment,
-    error: assignmentError 
+    error: assignmentError,
+    startAutoAssignment,
+    isAutoAssigning,
+    cancelAssignment
   } = useGamepadAssignment({
     onAssign1P: (index) => {
       console.log('[App] onAssign1P called with index:', index);
-      console.log('[App] Current 2P index:', settings.playMode.dp2PGamepadIndex);
+      console.log('[App] Current 2P index from ref:', dpAssignmentRef.current.player2);
       // 1P側を割り当て（2P側は現在の値を維持）
-      setDPGamepadMapping(index, settings.playMode.dp2PGamepadIndex);
+      dpAssignmentRef.current.player1 = index;
+      setDPGamepadMapping(index, dpAssignmentRef.current.player2);
     },
     onAssign2P: (index) => {
       console.log('[App] onAssign2P called with index:', index);
-      console.log('[App] Current 1P index:', settings.playMode.dp1PGamepadIndex);
+      console.log('[App] Current 1P index from ref:', dpAssignmentRef.current.player1);
       // 2P側を割り当て（1P側は現在の値を維持）
-      setDPGamepadMapping(settings.playMode.dp1PGamepadIndex, index);
+      dpAssignmentRef.current.player2 = index;
+      setDPGamepadMapping(dpAssignmentRef.current.player1, index);
     },
   });
+  
+  // DPモードでコントローラーが未割り当ての場合に自動割り当てを開始
+  useEffect(() => {
+    if (settings.playMode.mode === 'DP' && !isReceiveMode && !isAutoAssigning &&
+        (settings.playMode.dp1PGamepadIndex === null || settings.playMode.dp2PGamepadIndex === null)) {
+      startAutoAssignment();
+    }
+  }, [settings.playMode.mode, isReceiveMode, settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex, startAutoAssignment, isAutoAssigning]);
   
   // WebSocket接続管理（DP対応）
   const { 
@@ -93,7 +114,7 @@ function App() {
   
   // ゲームパッド自動検出（SPモード用）
   const { selectedGamepadIndex, error: gamepadError, reset: resetGamepad } = useGamepadDetection({
-    enabled: settings.playMode.mode === 'SP' && !showSettings && !assigningPlayer,
+    enabled: settings.playMode.mode === 'SP',
     onDetected: (index) => {
       // SPモードの場合
       if (!ws) connectWebSocket();
@@ -184,34 +205,27 @@ function App() {
     resetGamepad();
     disconnectWebSocket();
     resetMode();
-    setShowSettings(false);
-  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode]);
+    // DPモードの場合はゲームパッド割り当てもリセット
+    if (settings.playMode.mode === 'DP') {
+      resetDPGamepadMapping();
+      // 自動割り当てを再開始
+      startAutoAssignment();
+    }
+  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment]);
   
   const handleReceiveModeClick = useCallback(() => {
     connectWebSocket();
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
   
-  const handleSettingsClick = useCallback(() => {
-    setShowSettings(!showSettings);
-  }, [showSettings]);
-  
-  const handleStartAssignment = useCallback((player: '1P' | '2P') => {
-    if (player === '1P') {
-      startAssign1P();
-    } else {
-      startAssign2P();
-    }
-  }, [startAssign1P, startAssign2P]);
-
   return (
     <div style={{ fontFamily: "Noto Sans JP" }}>
       <AppHeader
         isServerMode={isServerMode}
         onReload={handleReloadClick}
         onClose={close}
-        onSettings={handleSettingsClick}
-        showSettings={showSettings}
+        currentMode={settings.playMode.mode}
+        onModeChange={setPlayMode}
       />
       <div className="container">
         {wsError && (
@@ -222,48 +236,48 @@ function App() {
           />
         )}
         
-        {/* 設定画面 */}
-        {showSettings && (
-          <>
-            <PlayModeSettings
-              currentMode={settings.playMode.mode}
-              onModeChange={setPlayMode}
-              dpAssignments={{
-                player1: settings.playMode.dp1PGamepadIndex !== null ? {
-                  index: settings.playMode.dp1PGamepadIndex,
-                  id: gamepads.find(g => g.index === settings.playMode.dp1PGamepadIndex)?.id || 'Unknown',
-                } : null,
-                player2: settings.playMode.dp2PGamepadIndex !== null ? {
-                  index: settings.playMode.dp2PGamepadIndex,
-                  id: gamepads.find(g => g.index === settings.playMode.dp2PGamepadIndex)?.id || 'Unknown',
-                } : null,
-              }}
-              onStartAssignment={handleStartAssignment}
-              assigningPlayer={assigningPlayer}
-              availableGamepads={gamepads.map(g => ({ index: g.index, id: g.id }))}
-            />
-            {assignmentError && (
-              <div style={{ 
-                color: '#ff6b6b', 
-                textAlign: 'center', 
-                marginTop: '10px',
-                fontSize: '12px'
-              }}>
-                {assignmentError}
-              </div>
-            )}
-          </>
-        )}
         
-        {/* コントローラー未選択時の画面（SPモードのみ） */}
-        {settings.playMode.mode === 'SP' && !spControllerStatus && !isReceiveMode && !showSettings && (
+        {/* コントローラー未選択時の画面 */}
+        {!isReceiveMode && (
           <>
-            <GamepadSelector error={gamepadError} />
-            <ConnectionSettings
-              ipAddress={ipAddress}
-              onIpAddressChange={setIpAddress}
-              onReceiveModeClick={handleReceiveModeClick}
-            />
+            {/* SPモード */}
+            {settings.playMode.mode === 'SP' && !spControllerStatus && (
+              <>
+                <GamepadSelector error={gamepadError} />
+                <ConnectionSettings
+                  ipAddress={ipAddress}
+                  onIpAddressChange={setIpAddress}
+                  onReceiveModeClick={handleReceiveModeClick}
+                />
+              </>
+            )}
+            
+            {/* DPモード */}
+            {settings.playMode.mode === 'DP' && (!dpControllerStatus || 
+              settings.playMode.dp1PGamepadIndex === null || 
+              settings.playMode.dp2PGamepadIndex === null) && (
+              <>
+                <DPGamepadSelector 
+                  error={assignmentError}
+                  assignments={{
+                    player1: settings.playMode.dp1PGamepadIndex !== null ? {
+                      index: settings.playMode.dp1PGamepadIndex,
+                      id: gamepads.find(g => g.index === settings.playMode.dp1PGamepadIndex)?.id || 'Unknown',
+                    } : null,
+                    player2: settings.playMode.dp2PGamepadIndex !== null ? {
+                      index: settings.playMode.dp2PGamepadIndex,
+                      id: gamepads.find(g => g.index === settings.playMode.dp2PGamepadIndex)?.id || 'Unknown',
+                    } : null,
+                  }}
+                  isAssigning={isAutoAssigning}
+                />
+                <ConnectionSettings
+                  ipAddress={ipAddress}
+                  onIpAddressChange={setIpAddress}
+                  onReceiveModeClick={handleReceiveModeClick}
+                />
+              </>
+            )}
           </>
         )}
         

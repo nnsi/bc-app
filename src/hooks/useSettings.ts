@@ -18,6 +18,8 @@ export interface UseSettingsReturn {
   setDPGamepadMapping: (player1Index: number | null, player2Index: number | null) => void;
   /** 設定をリセット */
   resetSettings: () => void;
+  /** DPモードのゲームパッド割り当てをリセット */
+  resetDPGamepadMapping: () => void;
 }
 
 /**
@@ -83,10 +85,24 @@ export const useSettings = (): UseSettingsReturn => {
     saveSettings(DEFAULT_SETTINGS);
   }, [saveSettings]);
 
+  // DPモードのゲームパッド割り当てをリセット
+  const resetDPGamepadMapping = useCallback(() => {
+    const newSettings: AppSettings = {
+      ...settings,
+      playMode: {
+        ...settings.playMode,
+        dp1PGamepadIndex: null,
+        dp2PGamepadIndex: null,
+      },
+    };
+    saveSettings(newSettings);
+  }, [settings, saveSettings]);
+
   return {
     settings,
     setPlayMode,
     setDPGamepadMapping,
     resetSettings,
+    resetDPGamepadMapping,
   };
 };
