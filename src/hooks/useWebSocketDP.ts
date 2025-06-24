@@ -109,6 +109,7 @@ export function useWebSocketDP({
         setReceivedData(parsedData);
       } catch (err) {
         const error: WebSocketError = {
+          name: 'WebSocketError',
           message: 'Failed to parse WebSocket message',
           timestamp: Date.now(),
         };
@@ -119,6 +120,7 @@ export function useWebSocketDP({
 
     webSocket.onerror = (event) => {
       const error: WebSocketError = {
+        name: 'WebSocketError',
         message: `接続エラー: ${ipAddress}:${WEBSOCKET_DEFAULTS.port}への接続に失敗しました`,
         code: 'CONNECTION_ERROR',
         timestamp: Date.now(),
