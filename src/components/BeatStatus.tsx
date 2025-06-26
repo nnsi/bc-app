@@ -1,11 +1,9 @@
 import React from 'react';
 import { ControllerStatus } from "../types/controller";
-import { useAppSettings } from '../contexts/AppSettingsContext';
 
 export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
   status,
 }) => {
-  const { isTransparent } = useAppSettings();
   const count =
     status.keys.reduce((val, key) => val + key.strokeCount, 0) +
     status.scratch.count;
