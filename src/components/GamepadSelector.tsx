@@ -17,7 +17,7 @@ const GamepadSelectorComponent: React.FC<GamepadSelectorProps> = ({ error }) => 
   return (
     <>
       <p className="text-center">
-        {error || 'コントローラーのボタンを長押ししてください'}
+        コントローラーのボタンを長押ししてください
       </p>
       {error && (
         <p className="text-center mb-[10px] text-[#ff6b6b] text-[12px]">

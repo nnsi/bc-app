@@ -58,9 +58,7 @@ export const WEBSOCKET_DEFAULTS: WebSocketConfig = {
 /**
  * WebSocketエラーの型
  */
-export interface WebSocketError {
-  /** エラーメッセージ */
-  message: string;
+export interface WebSocketError extends Error {
   /** エラーコード（あれば） */
   code?: string | number;
   /** エラー発生時刻 */

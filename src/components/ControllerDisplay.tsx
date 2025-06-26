@@ -6,43 +6,43 @@ import React, { memo } from 'react';
 import { IIDXController } from './IIDXController';
 import { BeatStatus } from './BeatStatus';
 import { ControllerStatus } from '../types/controller';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 
 interface ControllerDisplayProps {
   /** コントローラーの状態 */
   status: ControllerStatus;
-  /** 2Pモードかどうか */
-  is2P: boolean;
-  /** プレイヤーサイド変更ハンドラ */
-  onPlayerSideChange: (is2P: boolean) => void;
 }
 
 /**
  * コントローラー表示
  * IIDXコントローラーの視覚表現とビート統計を表示
  */
-const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status, is2P, onPlayerSideChange }) => {
+const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status }) => {
+  const { is2P, setIs2P, isTransparent } = useAppSettings();
   return (
     <>
-      <div style={{ position:"absolute", bottom:"0.5rem", "right":"1rem",display: 'flex', justifyContent: 'center', gap: '20px' }}>
-        <label>
-          <input
-            type="radio"
-            name="playerSide"
-            checked={!is2P}
-            onChange={() => onPlayerSideChange(false)}
-          />
-          1P
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="playerSide"
-            checked={is2P}
-            onChange={() => onPlayerSideChange(true)}
-          />
-          2P
-        </label>
-      </div>
+      {!isTransparent && (
+        <div style={{ position:"absolute", bottom:"0.5rem", right:"1rem",display: 'flex', justifyContent: 'center', gap: '20px' }}>
+          <label style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
+            <input
+              type="radio"
+              name="playerSide"
+              checked={!is2P}
+              onChange={() => setIs2P(false)}
+            />
+            1P
+          </label>
+          <label style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
+            <input
+              type="radio"
+              name="playerSide"
+              checked={is2P}
+              onChange={() => setIs2P(true)}
+            />
+            2P
+          </label>
+        </div>
+      )}
       <IIDXController status={status} is2P={is2P} />
       <BeatStatus status={status} />
     </>

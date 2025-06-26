@@ -1,9 +1,11 @@
 import React from 'react';
 import { ControllerStatus } from "../types/controller";
+import { useAppSettings } from '../contexts/AppSettingsContext';
 
 export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
   status,
 }) => {
+  const { isTransparent } = useAppSettings();
   const count =
     status.keys.reduce((val, key) => val + key.strokeCount, 0) +
     status.scratch.count;
@@ -29,7 +31,10 @@ export const BeatStatus: React.FC<{ status: ControllerStatus }> = ({
       : 0;
 
   return (
-    <p className="absolute left-2 bottom-2">
+    <p 
+      className="absolute left-2 bottom-2 text-lg" 
+      style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}
+    >
       {releaseAverage.toString().padStart(2, '0')} ms | {density.toString().padStart(2, '0')} / s <br />Total: {count}
     </p>
   );
