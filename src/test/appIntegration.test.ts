@@ -51,7 +51,7 @@ describe('App.tsx 統合シナリオ', () => {
       const mockSPStatus = {
         keys: Array(7).fill({ isPressed: false, strokeCount: 0 }),
         scratch: { 
-          state: 0, 
+          state: 0 as 0, 
           count: 0,
           currentAxes: 0,
           previousAxes: 0,
@@ -106,7 +106,7 @@ describe('App.tsx 統合シナリオ', () => {
       const receivedSPData = {
         keys: Array(7).fill({ isPressed: false, strokeCount: 0 }),
         scratch: { 
-          state: 0, 
+          state: 0 as 0, 
           count: 0,
           currentAxes: 0,
           previousAxes: 0,
@@ -141,7 +141,7 @@ describe('App.tsx 統合シナリオ', () => {
         player1: {
           keys: Array(7).fill({ isPressed: false, strokeCount: 0 }),
           scratch: { 
-            state: 0, 
+            state: 0 as 0, 
             count: 0,
             currentAxes: 0,
             previousAxes: 0,
@@ -161,7 +161,7 @@ describe('App.tsx 統合シナリオ', () => {
         player2: {
           keys: Array(7).fill({ isPressed: false, strokeCount: 0 }),
           scratch: { 
-            state: 0, 
+            state: 0 as 0, 
             count: 0,
             currentAxes: 0,
             previousAxes: 0,

@@ -4,7 +4,6 @@
 
 import React, { useMemo } from 'react';
 import { ControllerStatus } from '../types/controller';
-import { useAppSettings } from '../contexts/AppSettingsContext';
 
 interface BeatStatusDPProps {
   /** 1P側のコントローラー状態 */
@@ -79,7 +78,6 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
   player2Status,
   mode,
 }) => {
-  const { isTransparent } = useAppSettings();
   // 各プレイヤーの統計を計算
   const player1Stats = useMemo(() => calculateStats(player1Status), [player1Status]);
   const player2Stats = useMemo(() => calculateStats(player2Status), [player2Status]);
