@@ -66,6 +66,11 @@ export const useDPController = ({
   const [player1Status, setPlayer1Status] = useState<ControllerStatus>();
   const [player2Status, setPlayer2Status] = useState<ControllerStatus>();
   const [getGamepads, setGetGamepads] = useState<(() => (Gamepad | null)[]) | null>(null);
+  
+  // 最新の状態を保持するためのRef
+  const spControllerStatusRef = useRef<ControllerStatus>();
+  const player1StatusRef = useRef<ControllerStatus>();
+  const player2StatusRef = useRef<ControllerStatus>();
 
   // 単一コントローラーの状態を取得する関数
   const captureControllerStatus = useCallback((
@@ -272,28 +277,40 @@ export const useDPController = ({
     };
   }, [getGamepads]);
 
+  // 状態が更新されたらRefも更新
+  useEffect(() => {
+    spControllerStatusRef.current = spControllerStatus;
+  }, [spControllerStatus]);
+
+  useEffect(() => {
+    player1StatusRef.current = player1Status;
+  }, [player1Status]);
+
+  useEffect(() => {
+    player2StatusRef.current = player2Status;
+  }, [player2Status]);
+
   // メインの更新関数
   const updateControllers = useCallback(() => {
     if (playMode === 'SP') {
-      const status = captureControllerStatus(spGamepadIndex, spControllerStatus);
+      const status = captureControllerStatus(spGamepadIndex, spControllerStatusRef.current);
       setSPControllerStatus(status);
       setPlayer1Status(undefined);
       setPlayer2Status(undefined);
     } else {
       // DPモード
       const p1Status = dp1PGamepadIndex !== null 
-        ? captureControllerStatus(dp1PGamepadIndex, player1Status)
+        ? captureControllerStatus(dp1PGamepadIndex, player1StatusRef.current)
         : undefined;
       const p2Status = dp2PGamepadIndex !== null
-        ? captureControllerStatus(dp2PGamepadIndex, player2Status)
+        ? captureControllerStatus(dp2PGamepadIndex, player2StatusRef.current)
         : undefined;
       
       setPlayer1Status(p1Status);
       setPlayer2Status(p2Status);
       setSPControllerStatus(undefined);
     }
-  }, [playMode, spGamepadIndex, dp1PGamepadIndex, dp2PGamepadIndex, 
-      spControllerStatus, player1Status, player2Status, captureControllerStatus]);
+  }, [playMode, spGamepadIndex, dp1PGamepadIndex, dp2PGamepadIndex, captureControllerStatus]);
 
   const savedCallback = useRef(updateControllers);
 

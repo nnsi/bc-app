@@ -10,7 +10,7 @@ import { useDPController } from "./hooks/useDPController";
 import { useWindowResize } from "./hooks/useWindowResize";
 import { useWebSocketDP } from "./hooks/useWebSocketDP";
 import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
-import { useLocalStorage } from "./hooks/useLocalStorage";
+import { useAppSettings } from "./contexts/AppSettingsContext";
 import { useGamepadInfo } from "./hooks/useGamepadInfo";
 import { useWebSocketData } from "./hooks/useWebSocketData";
 import { useModeChange } from "./hooks/useModeChange";
@@ -19,8 +19,6 @@ import {
   determineDisplayStatus, 
   shouldStartAutoAssignment,
   shouldConnectWebSocketForDP,
-  stringToPlayerSide,
-  stringToTransparency,
   buildDPAssignments
 } from "./utils/appBusinessLogic";
 
@@ -32,14 +30,8 @@ import {
 function App() {
   // 接続設定
   const [ipAddress, setIpAddress] = useState<string>(WEBSOCKET.DEFAULT_IP);
-  // プレイヤーサイド (1P: false, 2P: true) - localStorageから初期値を取得
-  const [is2P, setIs2P] = useState<boolean>(() => 
-    stringToPlayerSide(localStorage.getItem('playerSide'))
-  );
-  // 透過状態 - localStorageから初期値を取得
-  const [isTransparent, setIsTransparent] = useState<boolean>(() => 
-    stringToTransparency(localStorage.getItem('isTransparent'))
-  );
+  // Context経由でアプリ設定を取得
+  const { isTransparent, setIsTransparent } = useAppSettings();
   
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
@@ -156,8 +148,6 @@ function App() {
     dpControllerStatus ?? null
   );
   
-  // localStorage管理
-  useLocalStorage(is2P, isTransparent);
 
   // プレイモード変更時の処理
   useModeChange({
@@ -241,8 +231,6 @@ function App() {
           gamepads
         )}
         isAutoAssigning={isAutoAssigning}
-        is2P={is2P}
-        onPlayerSideChange={setIs2P}
       />
     </div>
   );

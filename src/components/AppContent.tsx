@@ -28,8 +28,6 @@ interface AppContentProps {
     player2: { index: number; id: string } | null;
   };
   isAutoAssigning: boolean;
-  is2P: boolean;
-  onPlayerSideChange: (value: boolean) => void;
 }
 
 export const AppContent: React.FC<AppContentProps> = ({
@@ -49,8 +47,6 @@ export const AppContent: React.FC<AppContentProps> = ({
   assignmentError,
   assignments,
   isAutoAssigning,
-  is2P,
-  onPlayerSideChange,
 }) => {
   return (
     <div className="p-[5px] mt-4">
@@ -112,8 +108,6 @@ export const AppContent: React.FC<AppContentProps> = ({
             <>
               <ControllerDisplay 
                 status={displayStatus as ControllerStatus} 
-                is2P={is2P} 
-                onPlayerSideChange={onPlayerSideChange} 
               />
             </>
           )}

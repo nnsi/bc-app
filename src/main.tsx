@@ -6,6 +6,7 @@ import "./styles.css";
 import { invoke } from "@tauri-apps/api/core";
 import { STORAGE_KEYS } from './types/settings';
 import { UI } from './constants/app';
+import { AppSettingsProvider } from './contexts/AppSettingsContext';
 
 document.addEventListener(
   "contextmenu",
@@ -40,6 +41,8 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <AppSettingsProvider>
+      <App />
+    </AppSettingsProvider>
   </React.StrictMode>
 );
