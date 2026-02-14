@@ -4,6 +4,7 @@
 
 import React, { useMemo } from 'react';
 import { ControllerStatus } from '../types/controller';
+import { calculateStats } from '../utils/calculateStats';
 
 interface BeatStatusDPProps {
   /** 1P側のコントローラー状態 */
@@ -12,39 +13,6 @@ interface BeatStatusDPProps {
   player2Status?: ControllerStatus | null;
   /** プレイモード */
   mode: 'SP' | 'DP';
-}
-
-/**
- * 統計データを計算する関数
- */
-function calculateStats(status: ControllerStatus | null | undefined) {
-  if (!status) {
-    return {
-      count: 0,
-      density: 0,
-      releaseAverage: 0,
-    };
-  }
-
-  const count = status.keys.reduce((val, key) => val + key.strokeCount, 0) + status.scratch.count;
-  const unixTime = new Date().getTime();
-  const buttonDensity = status.record.pressedTimes.filter(
-    (pressedTime) => pressedTime > unixTime - 1000
-  ).length;
-  const scratchDensity = (status.record.scratchTimes || []).filter(
-    (scratchTime) => scratchTime > unixTime - 1000
-  ).length;
-  const density = buttonDensity + scratchDensity;
-
-  const releaseAverage =
-    status.record.releaseTimes.length > 0
-      ? Math.ceil(
-          status.record.releaseTimes.reduce((v, c) => v + c, 0) /
-          status.record.releaseTimes.length
-        )
-      : 0;
-
-  return { count, density, releaseAverage };
 }
 
 /**

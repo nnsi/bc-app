@@ -3,9 +3,8 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { getGamepads as GetGamepadsType } from 'tauri-plugin-gamepad-api';
 import { GAMEPAD_CONSTANTS } from '../types/gamepad';
-import { APP } from '../constants/app';
+import { useGamepadPlugin } from './useGamepadPlugin';
 
 interface UseGamepadAssignmentReturn {
   /** エラー情報 */
@@ -32,39 +31,16 @@ export function useGamepadAssignment({
   onAssign1P,
   onAssign2P,
 }: UseGamepadAssignmentProps): UseGamepadAssignmentReturn {
-  const [getGamepads, setGetGamepads] = useState<typeof GetGamepadsType | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
   const autoAssignedGamepadsRef = useRef<Set<number>>(new Set());
 
-  // Tauriが利用可能かチェック
-  const isTauriAvailable = useCallback(() => {
-    return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-  }, []);
+  // 共通プラグインロード
+  const { getGamepads, error: pluginError } = useGamepadPlugin();
 
-  // ゲームパッドプラグインを動的にロード
-  useEffect(() => {
-    const loadGamepadPlugin = async () => {
-      if (isTauriAvailable()) {
-        try {
-          const gamepadModule = await import('tauri-plugin-gamepad-api');
-          setGetGamepads(() => gamepadModule.getGamepads);
-          setError(null);
-        } catch (err) {
-          const errorMessage = 'ゲームパッドプラグインの読み込みに失敗しました';
-          if (APP.DEBUG) {
-            console.warn(errorMessage, err);
-          }
-          setError(errorMessage);
-        }
-      } else {
-        setError('Tauriが利用できません');
-      }
-    };
-
-    loadGamepadPlugin();
-  }, [isTauriAvailable]);
+  // エラーはプラグインエラーとローカルエラーをマージ
+  const error = localError ?? pluginError;
 
   // ゲームパッド入力を検出
   const detectGamepadInput = useCallback(() => {
@@ -74,13 +50,13 @@ export function useGamepadAssignment({
 
     try {
       const currentGamepads = [...getGamepads()].filter(Boolean);
-      
+
       if (currentGamepads.length === 0) {
-        setError('ゲームパッドが接続されていません');
+        setLocalError('ゲームパッドが接続されていません');
         return;
       }
 
-      setError(null);
+      setLocalError(null);
 
       for (const gamepad of currentGamepads) {
         // buttons配列が存在することを確認
@@ -95,7 +71,7 @@ export function useGamepadAssignment({
 
         if (pressedButton !== -1) {
           console.log(`[GamepadAssignment] Button ${pressedButton} pressed on gamepad ${gamepad.index}`);
-          
+
           // まだ割り当てられていないゲームパッドの場合のみ処理
           if (!autoAssignedGamepadsRef.current.has(gamepad.index)) {
             if (autoAssignedGamepadsRef.current.size === 0) {
@@ -112,7 +88,7 @@ export function useGamepadAssignment({
               autoAssignedGamepadsRef.current.add(gamepad.index);
               // 両方割り当て完了したら自動割り当てモードを終了
               setIsAutoAssigning(false);
-              setError(null);
+              setLocalError(null);
             }
           }
           break;
@@ -120,13 +96,13 @@ export function useGamepadAssignment({
       }
     } catch (err) {
       const errorMessage = 'ゲームパッド検出中にエラーが発生しました';
-      setError(errorMessage);
+      setLocalError(errorMessage);
     }
   }, [getGamepads, onAssign1P, onAssign2P, isAutoAssigning]);
 
   // 割り当てをキャンセル
   const cancelAssignment = useCallback(() => {
-    setError(null);
+    setLocalError(null);
     setIsAutoAssigning(false);
     autoAssignedGamepadsRef.current = new Set();
   }, []);
@@ -135,7 +111,7 @@ export function useGamepadAssignment({
   const startAutoAssignment = useCallback(() => {
     setIsAutoAssigning(true);
     autoAssignedGamepadsRef.current = new Set();
-    setError(null);
+    setLocalError(null);
     console.log('[GamepadAssignment] Starting auto assignment mode');
   }, []);
 
@@ -151,7 +127,7 @@ export function useGamepadAssignment({
 
     // 即座に1回実行
     detectGamepadInput();
-    
+
     intervalRef.current = setInterval(() => {
       detectGamepadInput();
     }, GAMEPAD_CONSTANTS.AUTO_DETECTION_INTERVAL);

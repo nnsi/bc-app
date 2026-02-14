@@ -49,7 +49,7 @@ export function useAppMode(): UseAppModeReturn {
   }, []);
 
   return {
-    mode: isReceiveMode ? AppMode.CLIENT : AppMode.CLIENT,
+    mode: isReceiveMode ? AppMode.SERVER : AppMode.CLIENT,
     isReceiveMode,
     setClientMode,
     setReceiveMode,

@@ -4,6 +4,16 @@
 
 
 /**
+ * ゲームパッドの基本情報（割り当て画面・一覧表示用）
+ */
+export interface GamepadInfo {
+  /** ゲームパッドのインデックス */
+  index: number;
+  /** ゲームパッドのID/名前 */
+  id: string;
+}
+
+/**
  * カスタムGamepad型（Tauri gamepad APIとブラウザGamepad APIの共通インターフェース）
  */
 export interface IGamepad {
