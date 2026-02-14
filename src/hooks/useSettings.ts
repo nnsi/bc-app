@@ -42,63 +42,61 @@ export const useSettings = (): UseSettingsReturn => {
     }
   }, []);
 
-  // 設定が変更されたらlocalStorageに保存
-  const saveSettings = useCallback((newSettings: AppSettings) => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(newSettings));
-      setSettings(newSettings);
-    } catch (error) {
-      console.error('Failed to save settings to localStorage:', error);
-    }
+  // 設定が変更されたらlocalStorageに保存（functional update対応）
+  const saveSettings = useCallback((updater: (prev: AppSettings) => AppSettings) => {
+    setSettings(prev => {
+      const newSettings = updater(prev);
+      try {
+        localStorage.setItem(STORAGE_KEYS.APP_SETTINGS, JSON.stringify(newSettings));
+      } catch (error) {
+        console.error('Failed to save settings to localStorage:', error);
+      }
+      return newSettings;
+    });
   }, []);
 
   // プレイモードを変更
   const setPlayMode = useCallback((mode: PlayMode) => {
-    console.log('[useSettings] setPlayMode called with:', mode);
-    console.log('[useSettings] Current mode:', settings.playMode.mode);
-    const newSettings: AppSettings = {
-      ...settings,
+    saveSettings(prev => ({
+      ...prev,
       playMode: {
-        ...settings.playMode,
+        ...prev.playMode,
         mode,
       },
-    };
-    saveSettings(newSettings);
-  }, [settings, saveSettings]);
+    }));
+  }, [saveSettings]);
 
   // DPモードのゲームパッド割り当てを変更
   const setDPGamepadMapping = useCallback(
     (player1Index: number | null, player2Index: number | null) => {
-      const newSettings: AppSettings = {
-        ...settings,
+      saveSettings(prev => ({
+        ...prev,
         playMode: {
-          ...settings.playMode,
+          ...prev.playMode,
           dp1PGamepadIndex: player1Index,
           dp2PGamepadIndex: player2Index,
         },
-      };
-      saveSettings(newSettings);
+      }));
     },
-    [settings, saveSettings]
+    [saveSettings]
   );
 
   // 設定をリセット
   const resetSettings = useCallback(() => {
-    saveSettings(DEFAULT_SETTINGS);
+    saveSettings(() => DEFAULT_SETTINGS);
   }, [saveSettings]);
 
   // DPモードのゲームパッド割り当てをリセット
   const resetDPGamepadMapping = useCallback(() => {
-    const newSettings: AppSettings = {
-      ...settings,
+    saveSettings(prev => ({
+      ...prev,
       playMode: {
-        ...settings.playMode,
+        ...prev.playMode,
         dp1PGamepadIndex: null,
         dp2PGamepadIndex: null,
       },
-    };
-    saveSettings(newSettings);
-  }, [settings, saveSettings]);
+    }));
+  }, [saveSettings]);
 
   return {
     settings,
