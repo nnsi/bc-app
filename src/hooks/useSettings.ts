@@ -3,7 +3,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { AppSettings, DEFAULT_SETTINGS, STORAGE_KEYS } from '../types/settings';
+import { listen } from '@tauri-apps/api/event';
+import { AppSettings, ControllerSettings, DEFAULT_SETTINGS, DEFAULT_CONTROLLER_SETTINGS, STORAGE_KEYS } from '../types/settings';
 import { PlayMode } from '../types/controller';
 
 /**
@@ -16,6 +17,10 @@ interface UseSettingsReturn {
   setPlayMode: (mode: PlayMode) => void;
   /** DPモードのゲームパッド割り当てを変更 */
   setDPGamepadMapping: (player1Index: number | null, player2Index: number | null) => void;
+  /** コントローラー設定を変更（部分更新） */
+  setControllerSettings: (settings: Partial<ControllerSettings>) => void;
+  /** コントローラー設定をデフォルトに戻す */
+  resetControllerSettings: () => void;
   /** 設定をリセット */
   resetSettings: () => void;
   /** DPモードのゲームパッド割り当てをリセット */
@@ -33,13 +38,39 @@ export const useSettings = (): UseSettingsReturn => {
     try {
       const savedSettings = localStorage.getItem(STORAGE_KEYS.APP_SETTINGS);
       if (savedSettings) {
-        const parsed = JSON.parse(savedSettings) as AppSettings;
-        console.log('[useSettings] Loaded settings:', parsed);
-        setSettings(parsed);
+        const parsed = JSON.parse(savedSettings);
+        // controller設定が未保存の場合はデフォルト値で補完
+        const merged: AppSettings = {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          controller: {
+            ...DEFAULT_CONTROLLER_SETTINGS,
+            ...(parsed.controller ?? {}),
+          },
+        };
+        console.log('[useSettings] Loaded settings:', merged);
+        setSettings(merged);
       }
     } catch (error) {
       console.error('Failed to load settings from localStorage:', error);
     }
+  }, []);
+
+  // 設定ウィンドウからの変更をリッスン
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
+    listen<ControllerSettings>('settings-changed', (event) => {
+      setSettings(prev => ({
+        ...prev,
+        controller: {
+          ...DEFAULT_CONTROLLER_SETTINGS,
+          ...event.payload,
+        },
+      }));
+    }).then(fn => { unlisten = fn; });
+
+    return () => { unlisten?.(); };
   }, []);
 
   // 設定が変更されたらlocalStorageに保存（functional update対応）
@@ -98,10 +129,34 @@ export const useSettings = (): UseSettingsReturn => {
     }));
   }, [saveSettings]);
 
+  // コントローラー設定を変更（部分更新）
+  const setControllerSettings = useCallback(
+    (controllerUpdate: Partial<ControllerSettings>) => {
+      saveSettings(prev => ({
+        ...prev,
+        controller: {
+          ...(prev.controller ?? DEFAULT_CONTROLLER_SETTINGS),
+          ...controllerUpdate,
+        },
+      }));
+    },
+    [saveSettings]
+  );
+
+  // コントローラー設定をデフォルトに戻す
+  const resetControllerSettings = useCallback(() => {
+    saveSettings(prev => ({
+      ...prev,
+      controller: DEFAULT_CONTROLLER_SETTINGS,
+    }));
+  }, [saveSettings]);
+
   return {
     settings,
     setPlayMode,
     setDPGamepadMapping,
+    setControllerSettings,
+    resetControllerSettings,
     resetSettings,
     resetDPGamepadMapping,
   };

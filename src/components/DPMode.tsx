@@ -18,6 +18,7 @@ import {
   buildDPAssignments,
 } from '../utils/appBusinessLogic';
 import type { DPControllerStatus } from '../types/controller';
+import type { ControllerSettings } from '../types/settings';
 
 interface DPModeProps {
   ws: WebSocket | null;
@@ -29,6 +30,7 @@ interface DPModeProps {
   ipAddress: string;
   onIpAddressChange: (value: string) => void;
   onReceiveModeClick: () => void;
+  controllerSettings: ControllerSettings;
 }
 
 const noop = () => {};
@@ -43,6 +45,7 @@ export const DPMode: React.FC<DPModeProps> = ({
   ipAddress,
   onIpAddressChange,
   onReceiveModeClick,
+  controllerSettings,
 }) => {
   // DP割り当てのref追跡（stale closure対策、useDPAssignmentRefを吸収）
   const dpRef = useRef<{ player1: number | null; player2: number | null }>({
@@ -88,8 +91,8 @@ export const DPMode: React.FC<DPModeProps> = ({
   }, [dp1PGamepadIndex, dp2PGamepadIndex, ws, connectWebSocket]);
 
   // 1P / 2P コントローラー状態のポーリング
-  const { status: p1Status } = useController(dp1PGamepadIndex ?? -1);
-  const { status: p2Status } = useController(dp2PGamepadIndex ?? -1);
+  const { status: p1Status } = useController(dp1PGamepadIndex ?? -1, controllerSettings);
+  const { status: p2Status } = useController(dp2PGamepadIndex ?? -1, controllerSettings);
 
   // DPControllerStatusの組み立て
   const dpControllerStatus: DPControllerStatus | null =

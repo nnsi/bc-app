@@ -11,6 +11,7 @@ import { GamepadSelector } from './GamepadSelector';
 import { ConnectionSettings } from './ConnectionSettings';
 import { ControllerDisplay } from './ControllerDisplay';
 import type { ControllerStatus } from '../types/controller';
+import type { ControllerSettings } from '../types/settings';
 
 interface SPModeProps {
   ws: WebSocket | null;
@@ -19,6 +20,7 @@ interface SPModeProps {
   ipAddress: string;
   onIpAddressChange: (value: string) => void;
   onReceiveModeClick: () => void;
+  controllerSettings: ControllerSettings;
 }
 
 const noop = () => {};
@@ -30,6 +32,7 @@ export const SPMode: React.FC<SPModeProps> = ({
   ipAddress,
   onIpAddressChange,
   onReceiveModeClick,
+  controllerSettings,
 }) => {
   // ゲームパッド自動検出
   const { selectedGamepadIndex, error: gamepadError } = useGamepadDetection({
@@ -40,7 +43,7 @@ export const SPMode: React.FC<SPModeProps> = ({
   });
 
   // コントローラー状態のポーリング
-  const { status } = useController(selectedGamepadIndex);
+  const { status } = useController(selectedGamepadIndex, controllerSettings);
 
   // コントローラーデータをWebSocket送信（変更時のみ）
   useWebSocketData({

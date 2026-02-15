@@ -6,7 +6,8 @@
 
 import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
 import type { ControllerStatus, KeyStatus, ScratchStatus, Record } from '../types/controller';
-import { KEY_MAPPING, CONTROLLER_CONSTANTS } from '../types/controller';
+import { KEY_MAPPING } from '../types/controller';
+import type { ControllerSettings } from '../types/settings';
 
 // Tauri型定義の拡張
 declare global {
@@ -45,8 +46,9 @@ interface UseControllerReturn {
  * 単一コントローラーの状態をポーリングするフック
  *
  * @param gamepadIndex ゲームパッドインデックス（< 0 ならポーリング無効）
+ * @param controllerSettings コントローラー設定（ポーリング間隔、閾値等）
  */
-export const useController = (gamepadIndex: number): UseControllerReturn => {
+export const useController = (gamepadIndex: number, controllerSettings: ControllerSettings): UseControllerReturn => {
   const [status, setStatus] = useState<ControllerStatus>();
   const [getGamepads, setGetGamepads] = useState<(() => (Gamepad | null)[]) | null>(null);
 
@@ -134,8 +136,8 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
     const prevScratchState = prevStatus?.scratch;
     const fixedStateScratchTime =
       pad.axes[1] != prevScratchState?.currentAxes
-        ? CONTROLLER_CONSTANTS.FIXED_SCRATCH_STATE_TIME
-        : Math.max((prevScratchState?.fixedStateTime ?? 0) - CONTROLLER_CONSTANTS.LOOP_MILLI_SECONDS, 0);
+        ? controllerSettings.fixedScratchStateTime
+        : Math.max((prevScratchState?.fixedStateTime ?? 0) - controllerSettings.loopMilliSeconds, 0);
 
     const scratchState = getScratchType({
       current: pad.axes[1],
@@ -145,7 +147,7 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
     const scratchStateType =
       fixedStateScratchTime === 0
         ? prevScratchState?.state || 0
-        : fixedStateScratchTime === CONTROLLER_CONSTANTS.FIXED_SCRATCH_STATE_TIME ||
+        : fixedStateScratchTime === controllerSettings.fixedScratchStateTime ||
           fixedStateScratchTime === 10
         ? scratchState
         : prevScratchState?.state || 0;
@@ -198,9 +200,9 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
       strokeDistance: strokeDistance,
     };
 
-    const filteredReleaseTimes = newReleaseTimes.filter((time) => time < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD);
+    const filteredReleaseTimes = newReleaseTimes.filter((time) => time < controllerSettings.longNoteThreshold);
     const filteredKeyReleaseTimes = newKeyReleaseTimes.map(times =>
-      times.filter(time => time < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD)
+      times.filter(time => time < controllerSettings.longNoteThreshold)
     );
 
     // スクラッチ回転距離の記録（ストローク単位）
@@ -210,7 +212,7 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
       const normalizedStrokeDistance = prevScratchState.strokeDistance * 43.3;
 
       const elapsedTime = unixTime - prevScratchState.rotationTime;
-      if (elapsedTime < CONTROLLER_CONSTANTS.LONG_NOTE_THRESHOLD) {
+      if (elapsedTime < controllerSettings.longNoteThreshold) {
         newScratchRotationDistances.push(normalizedStrokeDistance);
       }
     }
@@ -235,16 +237,16 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
     };
 
     // 配列のサイズ制限
-    if (record.releaseTimes.length > CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES) {
-      record.releaseTimes = record.releaseTimes.slice(0, CONTROLLER_CONSTANTS.MAX_RELEASE_TIMES);
+    if (record.releaseTimes.length > controllerSettings.maxReleaseTimes) {
+      record.releaseTimes = record.releaseTimes.slice(0, controllerSettings.maxReleaseTimes);
     }
     record.keyReleaseTimes = record.keyReleaseTimes.map(times =>
-      times.length > CONTROLLER_CONSTANTS.MAX_KEY_RELEASE_TIMES
-        ? times.slice(0, CONTROLLER_CONSTANTS.MAX_KEY_RELEASE_TIMES)
+      times.length > controllerSettings.maxKeyReleaseTimes
+        ? times.slice(0, controllerSettings.maxKeyReleaseTimes)
         : times
     );
-    record.pressedTimes.length = Math.min(record.pressedTimes.length, CONTROLLER_CONSTANTS.MAX_PRESSED_TIMES);
-    record.scratchTimes.length = Math.min(record.scratchTimes.length, CONTROLLER_CONSTANTS.MAX_SCRATCH_TIMES);
+    record.pressedTimes.length = Math.min(record.pressedTimes.length, controllerSettings.maxPressedTimes);
+    record.scratchTimes.length = Math.min(record.scratchTimes.length, controllerSettings.maxScratchTimes);
     if (record.scratchRotationDistances.length > 1) {
       record.scratchRotationDistances = record.scratchRotationDistances.slice(0, 1);
     }
@@ -254,7 +256,7 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
       scratch: scratchStatus,
       record: record,
     };
-  }, [getGamepads]);
+  }, [getGamepads, controllerSettings]);
 
   // メインの更新関数
   const updateController = useCallback(() => {
@@ -291,13 +293,13 @@ export const useController = (gamepadIndex: number): UseControllerReturn => {
   useEffect(() => {
     const timerId = setInterval(
       () => savedCallback.current(),
-      CONTROLLER_CONSTANTS.LOOP_MILLI_SECONDS
+      controllerSettings.loopMilliSeconds
     );
 
     return () => {
       clearInterval(timerId);
     };
-  }, []);
+  }, [controllerSettings.loopMilliSeconds]);
 
   const resetCount = useCallback(() => {
     setStatus(undefined);

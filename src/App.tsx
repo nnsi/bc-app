@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { AppHeader } from "./components/AppHeader";
 import { SPMode } from "./components/SPMode";
 import { DPMode } from "./components/DPMode";
@@ -92,6 +93,23 @@ function App() {
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
 
+  // 設定ウィンドウを開く（既に開いている場合はフォーカス）
+  const openSettingsWindow = useCallback(async () => {
+    const existing = await WebviewWindow.getByLabel('settings');
+    if (existing) {
+      await existing.setFocus();
+      return;
+    }
+    new WebviewWindow('settings', {
+      url: '/',
+      title: 'コントローラー設定',
+      width: 350,
+      height: 380,
+      resizable: false,
+      center: true,
+    });
+  }, []);
+
   return (
     <div className={`min-h-screen text-white overflow-hidden select-none text-sm ${isTransparent ? 'bg-transparent' : 'bg-neutral-700'}`}>
       <AppHeader
@@ -102,8 +120,9 @@ function App() {
         onModeChange={handleModeChange}
         isTransparent={isTransparent}
         onTransparencyChange={setIsTransparent}
+        onSettingsClick={openSettingsWindow}
       />
-      <div className="p-[5px] mt-4">
+      <div className="p-[5px] mt-4 relative">
         {wsError && (
           <ErrorMessage
             message={wsError.message}
@@ -152,6 +171,7 @@ function App() {
             ipAddress={ipAddress}
             onIpAddressChange={setIpAddress}
             onReceiveModeClick={handleReceiveModeClick}
+            controllerSettings={settings.controller}
           />
         )}
 
@@ -168,6 +188,7 @@ function App() {
             ipAddress={ipAddress}
             onIpAddressChange={setIpAddress}
             onReceiveModeClick={handleReceiveModeClick}
+            controllerSettings={settings.controller}
           />
         )}
       </div>
