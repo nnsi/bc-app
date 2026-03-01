@@ -206,11 +206,7 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
 
     if (isStateChanged && prevScratchState && prevScratchState.strokeDistance > 0) {
       const normalizedStrokeDistance = prevScratchState.strokeDistance * 43.3;
-
-      const elapsedTime = now - prevScratchState.rotationTime;
-      if (elapsedTime < controllerSettings.longNoteThreshold) {
-        newScratchRotationDistances.push(normalizedStrokeDistance);
-      }
+      newScratchRotationDistances.push(normalizedStrokeDistance);
     }
 
     const record: Record = {
