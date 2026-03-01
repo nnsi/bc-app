@@ -1,23 +1,4 @@
-import type { ControllerStatus, DPControllerStatus } from '../types/controller';
-
-/**
- * 表示するコントローラーステータスを決定する
- */
-export const determineDisplayStatus = (
-  isReceiveMode: boolean,
-  receivedData: ControllerStatus | DPControllerStatus | null,
-  playMode: 'SP' | 'DP',
-  spControllerStatus: ControllerStatus | null,
-  dpControllerStatus: DPControllerStatus | null
-): ControllerStatus | DPControllerStatus | null => {
-  if (isReceiveMode && receivedData) {
-    if ('mode' in receivedData && receivedData.mode === 'DP') {
-      return receivedData as DPControllerStatus;
-    }
-    return receivedData as ControllerStatus;
-  }
-  return playMode === 'SP' ? spControllerStatus : dpControllerStatus;
-};
+import type { GamepadInfo } from '../types/gamepad';
 
 /**
  * DPモードで自動割り当てを開始すべきか判定
@@ -29,8 +10,8 @@ export const shouldStartAutoAssignment = (
   dp1PGamepadIndex: number | null,
   dp2PGamepadIndex: number | null
 ): boolean => {
-  return playMode === 'DP' && 
-         !isReceiveMode && 
+  return playMode === 'DP' &&
+         !isReceiveMode &&
          !isAutoAssigning &&
          (dp1PGamepadIndex === null || dp2PGamepadIndex === null);
 };
@@ -45,80 +26,16 @@ export const shouldConnectWebSocketForDP = (
   dp2PGamepadIndex: number | null,
   wsConnected: boolean
 ): boolean => {
-  return playMode === 'DP' && 
+  return playMode === 'DP' &&
          !isReceiveMode &&
-         dp1PGamepadIndex !== null && 
+         dp1PGamepadIndex !== null &&
          dp2PGamepadIndex !== null &&
          !wsConnected;
 };
 
 /**
- * モード切り替え時のアクション
+ * ゲームパッド情報の変換
  */
-export interface ModeChangeActions {
-  shouldCancelAutoAssignment: boolean;
-  shouldResetCount: boolean;
-  shouldResetGamepad: boolean;
-  shouldResetDPMapping: boolean;
-  shouldStartAutoAssignment: boolean;
-}
-
-export const determineModeChangeActions = (
-  prevMode: 'SP' | 'DP',
-  newMode: 'SP' | 'DP',
-  isAutoAssigning: boolean
-): ModeChangeActions => {
-  if (prevMode === newMode) {
-    return {
-      shouldCancelAutoAssignment: false,
-      shouldResetCount: false,
-      shouldResetGamepad: false,
-      shouldResetDPMapping: false,
-      shouldStartAutoAssignment: false,
-    };
-  }
-
-  if (newMode === 'SP') {
-    // DPモードからSPモードへ
-    return {
-      shouldCancelAutoAssignment: isAutoAssigning,
-      shouldResetCount: true,
-      shouldResetGamepad: true,
-      shouldResetDPMapping: false,
-      shouldStartAutoAssignment: false,
-    };
-  } else {
-    // SPモードからDPモードへ
-    return {
-      shouldCancelAutoAssignment: false,
-      shouldResetCount: true,
-      shouldResetGamepad: true,
-      shouldResetDPMapping: true,
-      shouldStartAutoAssignment: true,
-    };
-  }
-};
-
-/**
- * プレイヤーサイドの変換
- */
-export const playerSideToString = (is2P: boolean): string => is2P ? '2P' : '1P';
-export const stringToPlayerSide = (saved: string | null): boolean => saved === '2P';
-
-/**
- * 透過状態の変換
- */
-export const transparencyToString = (isTransparent: boolean): string => String(isTransparent);
-export const stringToTransparency = (saved: string | null): boolean => saved !== 'false';
-
-/**
- * ゲームパッド情報の型と変換
- */
-export interface GamepadInfo {
-  index: number;
-  id: string;
-}
-
 export const transformGamepadData = (gamepads: any[]): GamepadInfo[] => {
   return gamepads
     .filter(Boolean)

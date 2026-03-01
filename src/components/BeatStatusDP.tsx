@@ -2,8 +2,9 @@
  * DP対応のビート統計表示コンポーネント
  */
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ControllerStatus } from '../types/controller';
+import { calculateStats } from '../utils/calculateStats';
 
 interface BeatStatusDPProps {
   /** 1P側のコントローラー状態 */
@@ -12,39 +13,6 @@ interface BeatStatusDPProps {
   player2Status?: ControllerStatus | null;
   /** プレイモード */
   mode: 'SP' | 'DP';
-}
-
-/**
- * 統計データを計算する関数
- */
-function calculateStats(status: ControllerStatus | null | undefined) {
-  if (!status) {
-    return {
-      count: 0,
-      density: 0,
-      releaseAverage: 0,
-    };
-  }
-
-  const count = status.keys.reduce((val, key) => val + key.strokeCount, 0) + status.scratch.count;
-  const unixTime = new Date().getTime();
-  const buttonDensity = status.record.pressedTimes.filter(
-    (pressedTime) => pressedTime > unixTime - 1000
-  ).length;
-  const scratchDensity = (status.record.scratchTimes || []).filter(
-    (scratchTime) => scratchTime > unixTime - 1000
-  ).length;
-  const density = buttonDensity + scratchDensity;
-
-  const releaseAverage =
-    status.record.releaseTimes.length > 0
-      ? Math.ceil(
-          status.record.releaseTimes.reduce((v, c) => v + c, 0) /
-          status.record.releaseTimes.length
-        )
-      : 0;
-
-  return { count, density, releaseAverage };
 }
 
 /**
@@ -82,6 +50,14 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
   const player1Stats = useMemo(() => calculateStats(player1Status), [player1Status]);
   const player2Stats = useMemo(() => calculateStats(player2Status), [player2Status]);
   const combinedStats = useMemo(() => combineStats(player1Stats, player2Stats), [player1Stats, player2Stats]);
+
+  // density > 0 の間だけ 200ms ごとに再レンダーして now を更新
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (combinedStats.density <= 0) return;
+    const timer = setInterval(() => setTick(t => t + 1), 200);
+    return () => clearInterval(timer);
+  }, [combinedStats.density > 0]);
 
   // SPモードの場合は常に単一の統計を表示
   if (mode === 'SP') {

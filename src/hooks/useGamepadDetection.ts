@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { getGamepads as GetGamepadsType } from 'tauri-plugin-gamepad-api';
 import { GAMEPAD_CONSTANTS } from '../types/gamepad';
 import { APP } from '../constants/app';
+import { useGamepadPlugin } from './useGamepadPlugin';
 
 interface UseGamepadDetectionProps {
   /** 自動検出を有効にするか */
@@ -35,7 +36,7 @@ interface UseGamepadDetectionReturn {
 
 /**
  * ゲームパッド自動検出を管理するカスタムフック
- * 
+ *
  * @example
  * ```tsx
  * const { selectedGamepadIndex, isDetecting, startDetection } = useGamepadDetection({
@@ -50,38 +51,15 @@ export function useGamepadDetection({
   onDetected,
 }: UseGamepadDetectionProps = {}): UseGamepadDetectionReturn {
   const [selectedGamepadIndex, setSelectedGamepadIndex] = useState(-1);
-  const [getGamepads, setGetGamepads] = useState<typeof GetGamepadsType | null>(null);
   const [isDetecting, setIsDetecting] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Tauriが利用可能かチェック
-  const isTauriAvailable = useCallback(() => {
-    return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-  }, []);
+  // 共通プラグインロード
+  const { getGamepads, error: pluginError } = useGamepadPlugin();
 
-  // ゲームパッドプラグインを動的にロード
-  useEffect(() => {
-    const loadGamepadPlugin = async () => {
-      if (isTauriAvailable()) {
-        try {
-          const gamepadModule = await import('tauri-plugin-gamepad-api');
-          setGetGamepads(() => gamepadModule.getGamepads);
-          setError(null);
-        } catch (err) {
-          const errorMessage = 'ゲームパッドプラグインの読み込みに失敗しました';
-          if (APP.DEBUG) {
-            console.warn(errorMessage, err);
-          }
-          setError(errorMessage);
-        }
-      } else {
-        setError('Tauriが利用できません');
-      }
-    };
-
-    loadGamepadPlugin();
-  }, [isTauriAvailable]);
+  // エラーはプラグインエラーとローカルエラーをマージ
+  const error = localError ?? pluginError;
 
   // ゲームパッド入力を検出
   const detectGamepadInput = useCallback(() => {
@@ -91,11 +69,11 @@ export function useGamepadDetection({
       const currentGamepads = [...getGamepads()].filter(Boolean);
 
       if (currentGamepads.length === 0) {
-        setError('ゲームパッドが接続されていません');
+        setLocalError('ゲームパッドが接続されていません');
         return;
       }
 
-      setError(null);
+      setLocalError(null);
 
       for (const gamepad of currentGamepads) {
         // buttons配列が存在することを確認
@@ -117,7 +95,7 @@ export function useGamepadDetection({
           }
           setSelectedGamepadIndex(gamepad.index);
           setIsDetecting(false);
-          setError(null);
+          setLocalError(null);
           onDetected?.(gamepad.index);
           break;
         }
@@ -127,7 +105,7 @@ export function useGamepadDetection({
       if (APP.DEBUG) {
         console.error(errorMessage, err);
       }
-      setError(errorMessage);
+      setLocalError(errorMessage);
     }
   }, [isDetecting, selectedGamepadIndex, getGamepads, onDetected]);
 

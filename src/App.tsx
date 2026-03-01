@@ -1,174 +1,57 @@
 import { useState, useCallback, useEffect } from "react";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { AppHeader } from "./components/AppHeader";
-import { AppContent } from "./components/AppContent";
+import { SPMode } from "./components/SPMode";
+import { DPMode } from "./components/DPMode";
+import { ErrorMessage } from "./components/ErrorMessage";
+import { ControllerDisplay } from "./components/ControllerDisplay";
+import { IIDXControllerDP } from "./components/IIDXControllerDP";
+import { BeatStatusDP } from "./components/BeatStatusDP";
 import { WEBSOCKET } from "./constants/app";
-import { useGamepadDetection } from "./hooks/useGamepadDetection";
 import { useTauriWindow } from "./hooks/useTauriWindow";
 import { useAppMode } from "./hooks/useAppMode";
 import { useSettings } from "./hooks/useSettings";
-import { useDPController } from "./hooks/useDPController";
 import { useWindowResize } from "./hooks/useWindowResize";
 import { useWebSocketDP } from "./hooks/useWebSocketDP";
-import { useGamepadAssignment } from "./hooks/useGamepadAssignment";
 import { useAppSettings } from "./contexts/AppSettingsContext";
-import { useGamepadInfo } from "./hooks/useGamepadInfo";
-import { useWebSocketData } from "./hooks/useWebSocketData";
-import { useModeChange } from "./hooks/useModeChange";
-import { useDPAssignmentRef } from "./hooks/useDPAssignmentRef";
-import { 
-  determineDisplayStatus, 
-  shouldStartAutoAssignment,
-  shouldConnectWebSocketForDP,
-  buildDPAssignments
-} from "./utils/appBusinessLogic";
+import type { PlayMode, ControllerStatus, DPControllerStatus } from "./types/controller";
 
 
 /**
  * メインアプリケーションコンポーネント
- * カスタムフックを使用して状態管理を行い、UIコンポーネントを組み合わせる
+ * モード切替、WebSocket接続、受信モード表示を管理し、
+ * 実際のコントローラーロジックはSPMode/DPModeに委譲する
  */
 function App() {
   // 接続設定
   const [ipAddress, setIpAddress] = useState<string>(WEBSOCKET.DEFAULT_IP);
+  // リロード時にモードコンポーネントを強制remount
+  const [reloadKey, setReloadKey] = useState(0);
   // Context経由でアプリ設定を取得
   const { isTransparent, setIsTransparent } = useAppSettings();
-  
+
   // カスタムフックによる機能の組み合わせ
   const { isServerMode, closeWindow } = useTauriWindow();
   const { isReceiveMode, setReceiveMode, resetMode } = useAppMode();
-  
+
   // 設定管理
   const { settings, setPlayMode, setDPGamepadMapping, resetDPGamepadMapping } = useSettings();
-  
-  // DPモードの割り当て状態を追跡するためのref
-  const dpAssignmentRef = useDPAssignmentRef({
-    dp1PGamepadIndex: settings.playMode.dp1PGamepadIndex,
-    dp2PGamepadIndex: settings.playMode.dp2PGamepadIndex,
-  });
-  
+
   // ウィンドウリサイズ
   useWindowResize({ playMode: settings.playMode.mode });
-  
-  // ゲームパッド情報を取得（DPモードの割り当て画面用）
-  const gamepads = useGamepadInfo();
-  
-  
-  // DPモード用ゲームパッド割り当て
-  const { 
-    error: assignmentError,
-    startAutoAssignment,
-    isAutoAssigning,
-    cancelAssignment
-  } = useGamepadAssignment({
-    onAssign1P: (index) => {
-      console.log('[App] onAssign1P called with index:', index);
-      console.log('[App] Current 2P index from ref:', dpAssignmentRef.current.player2);
-      // 1P側を割り当て（2P側は現在の値を維持）
-      dpAssignmentRef.current.player1 = index;
-      setDPGamepadMapping(index, dpAssignmentRef.current.player2);
-    },
-    onAssign2P: (index) => {
-      console.log('[App] onAssign2P called with index:', index);
-      console.log('[App] Current 1P index from ref:', dpAssignmentRef.current.player1);
-      // 2P側を割り当て（1P側は現在の値を維持）
-      dpAssignmentRef.current.player2 = index;
-      setDPGamepadMapping(dpAssignmentRef.current.player1, index);
-    },
-  });
-  
-  // DPモードでコントローラーが未割り当ての場合に自動割り当てを開始（受信モードでは無効）
-  useEffect(() => {
-    if (shouldStartAutoAssignment(
-      settings.playMode.mode, 
-      isReceiveMode, 
-      isAutoAssigning,
-      settings.playMode.dp1PGamepadIndex, 
-      settings.playMode.dp2PGamepadIndex
-    )) {
-      startAutoAssignment();
-    }
-  }, [settings.playMode.mode, isReceiveMode, settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex, startAutoAssignment, isAutoAssigning]);
-  
-  // WebSocket接続管理（DP対応）
-  const { 
-    ws, 
-    state: _, 
-    error: wsError, 
-    connect: connectWebSocket, 
-    disconnect: disconnectWebSocket, 
-    sendSP, 
-    sendDP, 
-    receivedData 
-  } = useWebSocketDP({
-    ipAddress,
-  });
 
-  // DPモードで両方のゲームパッドが割り当てられたらWebSocket接続
-  useEffect(() => {
-    if (shouldConnectWebSocketForDP(
-      settings.playMode.mode,
-      isReceiveMode,
-      settings.playMode.dp1PGamepadIndex,
-      settings.playMode.dp2PGamepadIndex,
-      !!ws
-    )) {
-      console.log('[App] DP mode gamepads assigned, connecting WebSocket');
-      connectWebSocket();
-    }
-  }, [settings.playMode.mode, isReceiveMode, settings.playMode.dp1PGamepadIndex, settings.playMode.dp2PGamepadIndex, ws, connectWebSocket]);
-  
-  // ゲームパッド自動検出（SPモード用、受信モードでは無効）
-  const { selectedGamepadIndex, error: gamepadError, reset: resetGamepad } = useGamepadDetection({
-    enabled: settings.playMode.mode === 'SP' && !isReceiveMode,
-    onDetected: (index) => {
-      // SPモードの場合
-      console.log('[App] SP mode gamepad detected:', index);
-      console.log('[App] Current DP assignments - 1P:', settings.playMode.dp1PGamepadIndex, '2P:', settings.playMode.dp2PGamepadIndex);
-      if (!ws) connectWebSocket();
-    },
-  });
-  
-  // DP対応コントローラー状態の取得（受信モードでは無効）
-  const { spControllerStatus, dpControllerStatus, resetCount } = useDPController({
-    playMode: isReceiveMode ? 'SP' : settings.playMode.mode,
-    spGamepadIndex: isReceiveMode ? -1 : selectedGamepadIndex,
-    dp1PGamepadIndex: isReceiveMode ? null : settings.playMode.dp1PGamepadIndex,
-    dp2PGamepadIndex: isReceiveMode ? null : settings.playMode.dp2PGamepadIndex,
-  });
-
-  
-  
-
-  // 表示するステータスを決定
-  const displayStatus = determineDisplayStatus(
-    isReceiveMode,
-    receivedData,
-    settings.playMode.mode,
-    spControllerStatus ?? null,
-    dpControllerStatus ?? null
-  );
-  
-
-  // プレイモード変更時の処理
-  useModeChange({
-    playMode: settings.playMode.mode,
-    isAutoAssigning,
-    cancelAssignment,
-    resetCount,
-    resetGamepad,
-    resetDPGamepadMapping,
-    startAutoAssignment,
-  });
-
-  // コントローラーデータを送信（データが変更された時のみ）
-  useWebSocketData({
+  // WebSocket接続管理（SP/DP/受信モード共通）
+  const {
     ws,
-    isReceiveMode,
-    playMode: settings.playMode.mode,
-    spControllerStatus: spControllerStatus ?? null,
-    dpControllerStatus: dpControllerStatus ?? null,
+    state: _,
+    error: wsError,
+    connect: connectWebSocket,
+    disconnect: disconnectWebSocket,
     sendSP,
     sendDP,
+    receivedData
+  } = useWebSocketDP({
+    ipAddress,
   });
 
   // クリーンアップ
@@ -183,22 +66,50 @@ function App() {
     disconnectWebSocket();
   }, [closeWindow, disconnectWebSocket]);
 
+  // リロード: remountで各モードの内部状態をリセット
   const handleReloadClick = useCallback(() => {
-    resetCount();
-    resetGamepad();
+    setReloadKey(k => k + 1);
     disconnectWebSocket();
     resetMode();
     if (settings.playMode.mode === 'DP') {
       resetDPGamepadMapping();
-      startAutoAssignment();
     }
-  }, [resetCount, resetGamepad, disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping, startAutoAssignment]);
-  
+  }, [disconnectWebSocket, resetMode, settings.playMode.mode, resetDPGamepadMapping]);
+
+  // モード切替: 旧モードをunmountし新モードをmount
+  const handleModeChange = useCallback((mode: PlayMode) => {
+    if (mode !== settings.playMode.mode) {
+      disconnectWebSocket();
+      resetMode();
+      if (mode === 'DP') {
+        resetDPGamepadMapping();
+      }
+    }
+    setPlayMode(mode);
+  }, [settings.playMode.mode, disconnectWebSocket, resetMode, setPlayMode, resetDPGamepadMapping]);
+
   const handleReceiveModeClick = useCallback(() => {
     connectWebSocket();
     setReceiveMode();
   }, [connectWebSocket, setReceiveMode]);
-  
+
+  // 設定ウィンドウを開く（既に開いている場合はフォーカス）
+  const openSettingsWindow = useCallback(async () => {
+    const existing = await WebviewWindow.getByLabel('settings');
+    if (existing) {
+      await existing.setFocus();
+      return;
+    }
+    new WebviewWindow('settings', {
+      url: '/',
+      title: 'コントローラー設定',
+      width: 350,
+      height: 380,
+      resizable: false,
+      center: true,
+    });
+  }, []);
+
   return (
     <div className={`min-h-screen text-white overflow-hidden select-none text-sm ${isTransparent ? 'bg-transparent' : 'bg-neutral-700'}`}>
       <AppHeader
@@ -206,32 +117,81 @@ function App() {
         onReload={handleReloadClick}
         onClose={close}
         currentMode={settings.playMode.mode}
-        onModeChange={setPlayMode}
+        onModeChange={handleModeChange}
         isTransparent={isTransparent}
         onTransparencyChange={setIsTransparent}
+        onSettingsClick={openSettingsWindow}
       />
-      <AppContent
-        wsError={wsError}
-        connectWebSocket={connectWebSocket}
-        isReceiveMode={isReceiveMode}
-        displayStatus={displayStatus}
-        playMode={settings.playMode.mode}
-        spControllerStatus={spControllerStatus ?? null}
-        dpControllerStatus={dpControllerStatus ?? null}
-        gamepadError={gamepadError}
-        ipAddress={ipAddress}
-        onIpAddressChange={setIpAddress}
-        onReceiveModeClick={handleReceiveModeClick}
-        dp1PGamepadIndex={settings.playMode.dp1PGamepadIndex}
-        dp2PGamepadIndex={settings.playMode.dp2PGamepadIndex}
-        assignmentError={assignmentError}
-        assignments={buildDPAssignments(
-          settings.playMode.dp1PGamepadIndex,
-          settings.playMode.dp2PGamepadIndex,
-          gamepads
+      <div className="p-[5px] mt-4 relative">
+        {wsError && (
+          <ErrorMessage
+            message={wsError.message}
+            showRetry={true}
+            onRetry={connectWebSocket}
+          />
         )}
-        isAutoAssigning={isAutoAssigning}
-      />
+
+        {/* 受信モード */}
+        {isReceiveMode && !receivedData && (
+          <div className="text-center p-5 text-[#4a9eff] text-[16px]">
+            受信モードで待機中...
+          </div>
+        )}
+        {isReceiveMode && receivedData && (
+          <>
+            {('mode' in receivedData && receivedData.mode === 'DP') ? (
+              <>
+                <IIDXControllerDP
+                  player1Status={(receivedData as DPControllerStatus).player1}
+                  player2Status={(receivedData as DPControllerStatus).player2}
+                  mode="DP"
+                  currentPlayerSide="1P"
+                />
+                <div className="mt-5">
+                  <BeatStatusDP
+                    player1Status={(receivedData as DPControllerStatus).player1}
+                    player2Status={(receivedData as DPControllerStatus).player2}
+                    mode="DP"
+                  />
+                </div>
+              </>
+            ) : (
+              <ControllerDisplay status={receivedData as ControllerStatus} />
+            )}
+          </>
+        )}
+
+        {/* SPモード */}
+        {!isReceiveMode && settings.playMode.mode === 'SP' && (
+          <SPMode
+            key={reloadKey}
+            ws={ws}
+            sendSP={sendSP}
+            connectWebSocket={connectWebSocket}
+            ipAddress={ipAddress}
+            onIpAddressChange={setIpAddress}
+            onReceiveModeClick={handleReceiveModeClick}
+            controllerSettings={settings.controller}
+          />
+        )}
+
+        {/* DPモード */}
+        {!isReceiveMode && settings.playMode.mode === 'DP' && (
+          <DPMode
+            key={reloadKey}
+            ws={ws}
+            sendDP={sendDP}
+            connectWebSocket={connectWebSocket}
+            dp1PGamepadIndex={settings.playMode.dp1PGamepadIndex}
+            dp2PGamepadIndex={settings.playMode.dp2PGamepadIndex}
+            onGamepadMapping={setDPGamepadMapping}
+            ipAddress={ipAddress}
+            onIpAddressChange={setIpAddress}
+            onReceiveModeClick={handleReceiveModeClick}
+            controllerSettings={settings.controller}
+          />
+        )}
+      </div>
     </div>
   );
 }

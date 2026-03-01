@@ -40,6 +40,8 @@ export interface ScratchStatus {
   rotationTime: number;
   /** 現在のストロークの累積回転距離 */
   strokeDistance: number;
+  /** 軸が最後に変化した時刻（performance.now） */
+  axesChangedAt: number;
 }
 
 /**
