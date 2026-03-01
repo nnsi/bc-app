@@ -22,7 +22,7 @@ const ControllerDisplayComponent: React.FC<ControllerDisplayProps> = ({ status }
   return (
     <>
       {!isTransparent && (
-        <div style={{ position:"absolute", bottom:"0.5rem", right:"1rem",display: 'flex', justifyContent: 'center', gap: '20px' }}>
+        <div style={{ position:"absolute", bottom:"-1.5rem", right:"1rem",display: 'flex', justifyContent: 'center', gap: '20px' }}>
           <label style={{ textShadow: '0 0 3px #000, 0 0 3px #000, 0 0 3px #000, 0 0 3px #000' }}>
             <input
               type="radio"

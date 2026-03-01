@@ -20,12 +20,12 @@ export function calculateStats(status: ControllerStatus | null | undefined): Bea
     status.keys.reduce((val, key) => val + key.strokeCount, 0) +
     status.scratch.count;
 
-  const unixTime = new Date().getTime();
+  const now = performance.now();
   const buttonDensity = status.record.pressedTimes.filter(
-    (pressedTime) => pressedTime > unixTime - 1000
+    (pressedTime) => pressedTime > now - 1000
   ).length;
   const scratchDensity = (status.record.scratchTimes || []).filter(
-    (scratchTime) => scratchTime > unixTime - 1000
+    (scratchTime) => scratchTime > now - 1000
   ).length;
   const density = buttonDensity + scratchDensity;
 

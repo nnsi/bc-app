@@ -2,7 +2,7 @@
  * DP対応のビート統計表示コンポーネント
  */
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ControllerStatus } from '../types/controller';
 import { calculateStats } from '../utils/calculateStats';
 
@@ -50,6 +50,14 @@ export const BeatStatusDP: React.FC<BeatStatusDPProps> = ({
   const player1Stats = useMemo(() => calculateStats(player1Status), [player1Status]);
   const player2Stats = useMemo(() => calculateStats(player2Status), [player2Status]);
   const combinedStats = useMemo(() => combineStats(player1Stats, player2Stats), [player1Stats, player2Stats]);
+
+  // density > 0 の間だけ 200ms ごとに再レンダーして now を更新
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (combinedStats.density <= 0) return;
+    const timer = setInterval(() => setTick(t => t + 1), 200);
+    return () => clearInterval(timer);
+  }, [combinedStats.density > 0]);
 
   // SPモードの場合は常に単一の統計を表示
   if (mode === 'SP') {

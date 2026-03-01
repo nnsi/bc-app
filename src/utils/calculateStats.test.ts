@@ -29,6 +29,7 @@ function createStatus(overrides?: {
       rotationDistance: 0,
       rotationTime: 0,
       strokeDistance: 0,
+      axesChangedAt: 0,
     },
     record: {
       releaseTimes: overrides?.releaseTimes ?? [],
@@ -41,14 +42,14 @@ function createStatus(overrides?: {
 }
 
 describe('calculateStats', () => {
-  // Date.now()を固定して密度計算をテスト可能にする
-  const NOW = 1700000000000;
+  // performance.now()を固定して密度計算をテスト可能にする
+  const NOW = 10000;
+  let performanceNowSpy: ReturnType<typeof vi.spyOn>;
   beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(NOW);
+    performanceNowSpy = vi.spyOn(performance, 'now').mockReturnValue(NOW);
   });
   afterEach(() => {
-    vi.useRealTimers();
+    performanceNowSpy.mockRestore();
   });
 
   // --- null/undefined ---

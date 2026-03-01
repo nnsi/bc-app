@@ -2,9 +2,12 @@
  * 単一コントローラーの状態管理フック
  * useDPController.ts の captureControllerStatus を抽出・共通化したもの。
  * SP/DPどちらでも同じhookを使い、DPモードでは2つインスタンス化する。
+ *
+ * イベント駆動方式: Tauriゲームパッドプラグインのイベントをトリガーに状態更新。
+ * スクラッチ減衰はタイムスタンプベースで計算し、setTimeoutワンショットで停止を検出。
  */
 
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { ControllerStatus, KeyStatus, ScratchStatus, Record } from '../types/controller';
 import { KEY_MAPPING } from '../types/controller';
 import type { ControllerSettings } from '../types/settings';
@@ -43,29 +46,16 @@ interface UseControllerReturn {
 }
 
 /**
- * 単一コントローラーの状態をポーリングするフック
+ * 単一コントローラーの状態をイベント駆動で管理するフック
  *
- * @param gamepadIndex ゲームパッドインデックス（< 0 ならポーリング無効）
- * @param controllerSettings コントローラー設定（ポーリング間隔、閾値等）
+ * @param gamepadIndex ゲームパッドインデックス（< 0 なら無効）
+ * @param controllerSettings コントローラー設定（閾値等）
  */
 export const useController = (gamepadIndex: number, controllerSettings: ControllerSettings): UseControllerReturn => {
   const [status, setStatus] = useState<ControllerStatus>();
   const [getGamepads, setGetGamepads] = useState<(() => (Gamepad | null)[]) | null>(null);
 
-  const statusRef = useRef<ControllerStatus>();
-  const gamepadIndexRef = useRef(gamepadIndex);
-
-  // gamepadIndexの変更をrefで追跡
-  useEffect(() => {
-    gamepadIndexRef.current = gamepadIndex;
-  }, [gamepadIndex]);
-
-  // 状態が更新されたらRefも更新
-  useEffect(() => {
-    statusRef.current = status;
-  }, [status]);
-
-  // 単一コントローラーの状態を取得する関数
+  // 単一コントローラーの状態を取得する関数（副作用なし）
   const captureControllerStatus = useCallback((
     currentGamepadIndex: number,
     prevStatus: ControllerStatus | undefined
@@ -88,7 +78,7 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
     const newKeyReleaseTimes: number[][] = [[], [], [], [], [], [], []];
     const newPressedTimes: number[] = [];
     const newScratchTimes: number[] = [];
-    const unixTime = new Date().getTime();
+    const now = performance.now();
 
     const keyStatus = pad.buttons.reduce<KeyStatus[]>((arr, button, i) => {
       if (!(i in KEY_MAPPING)) return arr;
@@ -107,11 +97,11 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
         isChangedState,
         beforeState: prevState?.isPressed ?? false,
         beforeStateTime: isChangedState
-          ? unixTime
+          ? now
           : prevState?.beforeStateTime ?? 0,
         releaseTime:
           prevState && isChangedState && button.pressed === false
-            ? unixTime - (prevState?.beforeStateTime ?? 0)
+            ? now - (prevState?.beforeStateTime ?? 0)
             : prevState?.releaseTime ?? 0,
         strokeCount,
       };
@@ -122,7 +112,7 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
       }
 
       if (isChangedState && keyState.isPressed) {
-        newPressedTimes.push(unixTime);
+        newPressedTimes.push(now);
       }
 
       if (i === 5) {
@@ -134,10 +124,15 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
     }, [] as KeyStatus[]);
 
     const prevScratchState = prevStatus?.scratch;
-    const fixedStateScratchTime =
-      pad.axes[1] != prevScratchState?.currentAxes
-        ? controllerSettings.fixedScratchStateTime
-        : Math.max((prevScratchState?.fixedStateTime ?? 0) - controllerSettings.loopMilliSeconds, 0);
+
+    // タイムスタンプベースの fixedStateTime 計算
+    const axesChanged = pad.axes[1] !== prevScratchState?.currentAxes;
+    const axesChangedAt = axesChanged
+      ? now
+      : (prevScratchState?.axesChangedAt ?? now);
+    const fixedStateScratchTime = axesChanged
+      ? controllerSettings.fixedScratchStateTime
+      : Math.max(controllerSettings.fixedScratchStateTime - (now - axesChangedAt), 0);
 
     const scratchState = getScratchType({
       current: pad.axes[1],
@@ -146,9 +141,9 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
 
     const scratchStateType =
       fixedStateScratchTime === 0
-        ? prevScratchState?.state || 0
+        ? 0
         : fixedStateScratchTime === controllerSettings.fixedScratchStateTime ||
-          fixedStateScratchTime === 10
+          fixedStateScratchTime <= 10
         ? scratchState
         : prevScratchState?.state || 0;
 
@@ -158,7 +153,7 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
         : prevScratchState?.count ?? 0;
 
     if (scratchState !== 0 && prevScratchState?.state !== scratchStateType) {
-      newScratchTimes.push(unixTime);
+      newScratchTimes.push(now);
     }
 
     // スクラッチ回転距離の計算
@@ -196,8 +191,9 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
       state: scratchStateType,
       count: scratchCount,
       rotationDistance: rotationDistance,
-      rotationTime: unixTime,
+      rotationTime: now,
       strokeDistance: strokeDistance,
+      axesChangedAt: axesChangedAt,
     };
 
     const filteredReleaseTimes = newReleaseTimes.filter((time) => time < controllerSettings.longNoteThreshold);
@@ -211,7 +207,7 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
     if (isStateChanged && prevScratchState && prevScratchState.strokeDistance > 0) {
       const normalizedStrokeDistance = prevScratchState.strokeDistance * 43.3;
 
-      const elapsedTime = unixTime - prevScratchState.rotationTime;
+      const elapsedTime = now - prevScratchState.rotationTime;
       if (elapsedTime < controllerSettings.longNoteThreshold) {
         newScratchRotationDistances.push(normalizedStrokeDistance);
       }
@@ -258,21 +254,6 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
     };
   }, [getGamepads, controllerSettings]);
 
-  // メインの更新関数
-  const updateController = useCallback(() => {
-    const currentIndex = gamepadIndexRef.current;
-    if (currentIndex < 0) return;
-
-    const newStatus = captureControllerStatus(currentIndex, statusRef.current);
-    setStatus(newStatus);
-  }, [captureControllerStatus]);
-
-  const savedCallback = useRef(updateController);
-
-  useLayoutEffect(() => {
-    savedCallback.current = updateController;
-  }, [updateController]);
-
   // Gamepadプラグインのロード
   useEffect(() => {
     const loadGamepadPlugin = async () => {
@@ -289,17 +270,46 @@ export const useController = (gamepadIndex: number, controllerSettings: Controll
     loadGamepadPlugin();
   }, []);
 
-  // メインループ
+  // イベント駆動メインループ
   useEffect(() => {
-    const timerId = setInterval(
-      () => savedCallback.current(),
-      controllerSettings.loopMilliSeconds
-    );
+    if (gamepadIndex < 0 || !getGamepads) return;
+
+    let unlistenPromise: Promise<() => void> | undefined;
+
+    if (isTauriAvailable()) {
+      const setup = async () => {
+        const { listen } = await import('@tauri-apps/api/event');
+        return await listen('event', () => {
+          setStatus(prev =>
+            captureControllerStatus(gamepadIndex, prev) ?? prev
+          );
+        });
+      };
+      unlistenPromise = setup();
+    }
 
     return () => {
-      clearInterval(timerId);
+      unlistenPromise?.then(unlisten => unlisten());
     };
-  }, [controllerSettings.loopMilliSeconds]);
+  }, [gamepadIndex, getGamepads, captureControllerStatus]);
+
+  // スクラッチ減衰タイマー（ワンショット）
+  // イベントが来ない間もfixedStateTimeを0にするための安全弁
+  const scratchFixedStateTime = status?.scratch.fixedStateTime ?? 0;
+  const scratchAxesChangedAt = status?.scratch.axesChangedAt ?? 0;
+
+  useEffect(() => {
+    if (scratchFixedStateTime <= 0 || gamepadIndex < 0 || !getGamepads) return;
+
+    const timer = setTimeout(() => {
+      setStatus(prev => {
+        if (!prev) return prev;
+        return captureControllerStatus(gamepadIndex, prev) ?? prev;
+      });
+    }, scratchFixedStateTime + 1);
+
+    return () => clearTimeout(timer);
+  }, [scratchFixedStateTime, scratchAxesChangedAt, gamepadIndex, getGamepads, captureControllerStatus]);
 
   const resetCount = useCallback(() => {
     setStatus(undefined);
